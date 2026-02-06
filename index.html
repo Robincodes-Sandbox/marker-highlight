@@ -474,31 +474,40 @@
                             // Access the highlighter's internal renderer map
                             const renderers = highlighter.renderers?.get(mark);
                             if (renderers) {
-                                renderers.forEach(renderer => {
-                                    // Clear the canvas
+                                // Get options for multi-line delay
+                                const options = highlighter.getElementOptions?.(mark)?.final || {};
+                                const multiLineDelay = parseFloat(mark.dataset.multiLineDelay) || options.multiLineDelay || 0;
+                                const animationSpeed = parseFloat(mark.dataset.animationSpeed) || options.animationSpeed || 1000;
+
+                                renderers.forEach((renderer, segmentIndex) => {
+                                    // Clear the canvas immediately
                                     renderer.ctx.clearRect(0, 0, renderer.canvas.width, renderer.canvas.height);
 
                                     // Reset renderer-specific state (BurstRenderer elements)
                                     if (renderer.elements) {
                                         renderer.elements.forEach(el => el.drawn = false);
                                     }
-                                    // Reset pathSegments for CircleRenderer (they don't have drawn flag but lastProgress handles it)
 
-                                    // Reset animation state
-                                    renderer.isCompleted = false;
-                                    renderer.isAnimating = true;
-                                    renderer.animationStartTime = null;
-                                    renderer.animationProgress = 0;
-                                    renderer.lastProgress = 0;
+                                    // Calculate delay for this segment (same logic as MarkerHighlighter)
+                                    const delay = multiLineDelay * segmentIndex * animationSpeed;
 
-                                    // Restart animation loop
-                                    const animate = (timestamp) => {
-                                        const isAnimating = renderer.animate(timestamp);
-                                        if (isAnimating) {
-                                            requestAnimationFrame(animate);
-                                        }
-                                    };
-                                    requestAnimationFrame(animate);
+                                    setTimeout(() => {
+                                        // Reset animation state
+                                        renderer.isCompleted = false;
+                                        renderer.isAnimating = true;
+                                        renderer.animationStartTime = null;
+                                        renderer.animationProgress = 0;
+                                        renderer.lastProgress = 0;
+
+                                        // Restart animation loop
+                                        const animate = (timestamp) => {
+                                            const isAnimating = renderer.animate(timestamp);
+                                            if (isAnimating) {
+                                                requestAnimationFrame(animate);
+                                            }
+                                        };
+                                        requestAnimationFrame(animate);
+                                    }, delay);
                                 });
                             }
                         });
