@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>markerHighlighter.js</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Josefin+Sans:ital,wght@0,100..700;1,100..700&family=Paytone+One&family=Playwrite+ES+Deco:wght@100..400&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap"
+        rel="stylesheet">
+    <style>
+
+        html {
+            font-size: 16px;
+        }
+
+        body {
+            font-family: "Josefin Sans", Arial, sans-serif;
+            padding: 50px;
+            line-height: 1.75;
+            font-size: 1.25rem;
+        }
+
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #eee;
+            border: 3px solid #aaa;
+            padding: 25px;
+        }
+
+        .container2 {
+            max-width: 800px;
+            margin: 20px;
+            ;
+            background: white;
+            border: none;
+            padding: 10px 20px;
+        }
+
+        .header {
+            font-family: "Paytone One", sans-serif;
+            font-weight: 400;
+            font-style: normal;
+            text-align: center;
+            font-size: 60px;
+        }
+
+        p {            
+            font-size: 1.5rem;
+            line-height: 1.5;
+            color: #333;
+        }
+
+        .opening-para {
+            color: #333;
+        }
+
+        .opening-para mark.one {
+            background-color: #24f;
+            color: #aaf;
+        }
+
+        .opening-para mark.two {
+            background-color: #2f4;
+            color: #262;
+        }
+
+        .opening-para mark.three {
+            background-color: #f42;
+            color: #600;
+        }
+
+        h3 {
+            font-size: 2rem;
+        }
+
+        h3 mark {
+            background-color: #ff6600;
+        }
+
+        code mark {
+            background-color: #2f2;
+        }
+
+        .examples mark {
+            background-color: #ff6600;
+        }
+
+
+        @media screen and (max-width: 600px) {
+            .header {
+                font-size: 20px !important;
+            }
+        }
+
+        .font1 {
+            font-family: "Josefin Sans", sans-serif;
+            font-optical-sizing: auto;
+            font-weight: 400;
+            font-style: normal;
+        }
+
+        .font2 {
+            font-family: "Playwrite ES Deco", cursive;
+            font-optical-sizing: auto;
+            font-weight: 400;
+            font-style: normal;
+        }
+
+        .roboto-thin {
+            font-family: "Roboto", sans-serif;
+            font-weight: 100;
+            font-style: normal;
+        }
+
+        .roboto-light {
+            font-family: "Roboto", sans-serif;
+            font-weight: 300;
+            font-style: normal;
+        }
+
+        .roboto-regular {
+            font-family: "Roboto", sans-serif;
+            font-weight: 400;
+            font-style: normal;
+        }
+
+        .font3 {
+            font-family: "Roboto", sans-serif;
+            font-weight: 500;
+            font-style: normal;
+        }
+
+        .roboto-bold {
+            font-family: "Roboto", sans-serif;
+            font-weight: 700;
+            font-style: normal;
+        }
+
+        .roboto-black {
+            font-family: "Roboto", sans-serif;
+            font-weight: 900;
+            font-style: normal;
+        }
+
+        .roboto-thin-italic {
+            font-family: "Roboto", sans-serif;
+            font-weight: 100;
+            font-style: italic;
+        }
+
+        .roboto-light-italic {
+            font-family: "Roboto", sans-serif;
+            font-weight: 300;
+            font-style: italic;
+        }
+
+        .roboto-regular-italic {
+            font-family: "Roboto", sans-serif;
+            font-weight: 400;
+            font-style: italic;
+        }
+
+        .roboto-medium-italic {
+            font-family: "Roboto", sans-serif;
+            font-weight: 500;
+            font-style: italic;
+        }
+
+        .roboto-bold-italic {
+            font-family: "Roboto", sans-serif;
+            font-weight: 700;
+            font-style: italic;
+        }
+
+        .roboto-black-italic {
+            font-family: "Roboto", sans-serif;
+            font-weight: 900;
+            font-style: italic;
+        }
+
+
+        h2 {
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+
+        /* Remove default mark formatting */
+        mark {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+            background-color: #ffaa88;
+            background-blend-mode: luminosity;
+        }
+
+        .mark1 {
+            background-color: #ff8888;
+        }
+
+        .mark2 {
+            background-color: #33ff44;
+        }
+
+        .mark3 {
+            background-color: #55ffff;
+        }
+
+        .mark4 {
+            background-color: #ffff99;
+        }
+
+        .mark5 {
+            background-color: #aabbff;
+        }
+
+        .mark8 {
+            background-color: #d35f01;
+        }
+
+        .markblack {
+            background-color: #000000;
+        }
+
+        .text-to-highlight {
+            position: relative;
+            max-width: 400px;
+        }
+
+        .highlight {
+            position: absolute;
+            overflow: hidden;
+            z-index: -1;
+            background-color: transparent;
+        }
+    </style>
+<!-- Blocking script ensures nothing else loads until completion -->
+<script>
+    // set background of all <mark> elements to transparent and copy hex background color to data-bg-attr 
+    // so that the background color can be restored after the script has loaded
+    
+        document.querySelectorAll('mark').forEach((mark) => {
+            mark.setAttribute('data-bg-attr', mark.style.backgroundColor);
+            mark.style.backgroundColor = 'transparent';
+        });
+    
+</script>
+    <script type="module">
+
+        import { MarkerHighlighter } from "./dist/index.js";
+
+
+        // Generate some preset styles that can be used to override the defaults
+        // on a per-element basis with e.g. data-highlight-style="style1"
+
+        MarkerHighlighter.defineStyle('looper', {
+            padding: 0.25,
+            drawingMode: 'burst',
+            animationSpeed: 1500,
+            burst: {
+                count: 25,
+            }
+        });
+
+        MarkerHighlighter.defineStyle('smol-1', {
+            padding: 0.25,
+            animationSpeed: 1500,
+            highlight: {
+                amplitude: 0.25,
+                wavelength: 3,
+                roughEnds: 0,
+            }
+        });
+
+        MarkerHighlighter.defineStyle('code', {
+            padding: -.25,
+            animationSpeed: 1500,
+            height: 0.25,
+            highlight: {
+                amplitude: 0.1,
+                wavelength: 10,
+                roughEnds: 5,
+            }
+        });
+
+        MarkerHighlighter.defineStyle('example', {
+            padding: 0.15,
+            animate: false,
+            highlight: {
+                amplitude: 0.1,
+                wavelength: 10,
+                roughEnds: 0,
+            }
+        });        
+
+        MarkerHighlighter.defineStyle('heading', {
+            padding: 0.5,
+            animationSpeed: 3000,
+            height: 1.25,
+            highlight: {
+                amplitude: 1,
+                wavelength: 1,
+                roughEnds: 2,
+            }
+        });        
+
+
+        MarkerHighlighter.defineStyle('style1', {
+            animationSpeed: 500,
+            offset: 0,
+            animate: true,
+            animationTrigger: 'scrollIntoView',
+            highlight: {
+                amplitude: 1,
+                wavelength: 2,
+                roughEnds: 5,
+            },
+            drawingMode: 'highlight',
+            height: 2
+        });
+
+        MarkerHighlighter.defineStyle('style2', {
+            animationSpeed: 2500,
+            wavelength: 2,
+            amplitude: 3,
+            height: 0.15,
+            offset: .2,
+            highlight: {
+                wavelength: 10,
+                amplitude: 0,
+            }
+        });
+
+        MarkerHighlighter.defineStyle('underline', {
+            animationSpeed: 500,
+            animationTrigger: 'scrollIntoView',
+            height: 0.1,
+            offset: .75,
+            padding: -.25,
+            highlight: {
+                wavelength: 1,
+                amplitude: .3,
+                roughEnds: 2,
+            }
+        });
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const defaultOptions = {
+                debug: true,
+                // For now, only "highlight" mode is available
+                drawingMode: 'highlight',
+                // Animation speed, in ms, time taken to complete a full highlight
+                animationSpeed: 250,
+                // easing, can be any CSS easing function                
+                easing: 'ease-out-in',
+                // Whether to animate the highlight. If false, will appear instantly
+                animate: true,
+                // Horizontal padding, additional space to the left and right of each highlight
+                // Measured in 1 = 1 height unit
+                padding: 1.25,
+                // Height of the highlight, in units of 1 = line height
+                height: 1,
+                // Vertical offset, in units of 1 = line height
+                offset: 0,
+                // Can be either 'load' or 'scrollIntoView'
+                animationTrigger: 'load',
+                // Renderer-specific options
+                highlight: {
+                    // The wavelength of the highlight draw effect (how wide the wave is)
+                    wavelength: 5,
+                    // The amplitude of the highlight draw effect (how high the wave peaks are)
+                    amplitude: 1,
+                    // Horizontal offset of the highlight wave
+                    offset: 0,
+                    // How "scribbly" the wave is. 0 = regular sin wave, 1 = much more irregular/loopy
+                    // TBC
+                    scribbleFactor: 0,
+                    // TBC
+                    jitter: 4,
+                    // roughEnds adjusts the roughness of the ends of the highlight
+                    roughEnds: 2.5,
+                    // TBC - will control whether the highlight uses a gradient effect or is solid color
+                    gradient: 1,
+                }
+            };
+
+            // Apply highlight animation to all <mark> elements within body
+            new MarkerHighlighter(document.querySelector('body'), defaultOptions);
+
+
+        });
+    </script>
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <!-- You can nest highlights -->
+        <h2 class="header">
+
+            <mark data-animation-speed="1850" data-padding=".2" class="mark8" data-highlight-wavelength="15"
+                data-amplitude="25" data-height="2">
+
+                <mark style="background-color: #22f" data-animation-speed="2000" data-padding="3" data-offset=".2"
+                    data-height=".5" class="mark8" data-wavelength="5" data-amplitude="5" data-jitter="1">
+
+                    <mark style="background-color: #2f2" data-animation-speed="1000" data-padding="1" data-offset="1"
+                        data-height=".1" class="mark8" data-wavelength="5" data-amplitude="5" data-jitter="1">
+
+                        <span style='color: white'>MarkerHighlight.js</span>
+                    </mark>
+                </mark>
+
+            </mark>
+
+        </h2>
+
+        <p class="opening-para">
+            A JavaScript library for creating <mark data-highlight-style="smol-1" data-delay="100" class="one">fluid</mark>, <mark data-highlight-style="smol-1" data-delay="450" class="two">dynamic</mark> and <mark data-delay="800" data-highlight-style="smol-1" class="three">highly customisable highlight effects for text</mark> and, eventually, all sorts of HTML DOM elements!
+        </p>
+
+        <p>I created this library after looking for a suitable solution for marking up text on a website in an interesting, eye-catching way. There's a few basic libraries available, but <mark data-animation-speed="1500" data-height="2" data-padding=".75" data-delay="1100" data-highlight-style="smol-1" style="background-color:#f00; color: white; font-weight:900" data-skew-x="1">nothing that's just... fun!</mark></p>
+
+        <h3><mark data-skew-x="-.5" data-skew-y=".03" data-highlight-style="heading">So many possibilities</mark></h3>
+
+        <p>There are multiple configuration options available. Currently, you can adjust the parameters of the initial highlight style, <i>HighlighterMarker</i></p>
+
+        <ul class="examples">
+            <li>Adjust the <mark data-highlight-style="example" data-height="0.1">height of the marker line</mark></li>
+            <li>Adjust the <mark data-highlight-style="example" data-offset="1">vertical offset</mark></li>
+            <li>Adjust the <mark data-highlight-style="example" data-padding="3">horizontal left/right padding</mark></li>
+            <li>Adjust the <mark data-highlight-style="example" data-highlight-amplitude="2" data-highlight-wavelength="3">wave (amplitude, wavelength)</mark> to adjust the draw effect</li>
+            <li>And more to come...</li>
+        </ul>
+
+        <!-- You can override attributes at the element level -->
+        <!-- Set predefined styles with e.g. data-highlight-style="style1" -->
+        <p class="font1">I've <mark data-highlight-style="style1" style="font-size:1rem;">been working
+                on a </mark><mark data-animation-speed="250" class="mark3" data-wavelength="10" data-animate="false"
+                data-amplitude="5" data-line-fade="1">JavaScript Library</mark> to add <mark
+                style="background-color:#d33; color: white;" data-wavelength="5" data-amplitude="1" data-height="1.2"
+                data-line-fade="1" data-horizontal-padding=".2">fancy li'l <u>highlight effects</u> to HTML</mark>. The
+            library will <mark class="mark5" data-offset="1.5" data-wavelength="1" data-amplitude="3"
+                data-height="0.25">let
+                you do <b>all sorts of cool things</b> with it</mark></p>
+
+        <p class="font2">It's still <mark class="mark5" data-offset="0" data-wavelength="5" data-amplitude="3"
+                data-height="0.1" style="background-color:#22f">early days</mark>, a <mark class="mark5"
+                style="background-color: #255" data-highlight-style="underline">work in progress. But getting
+                there!</mark>
+        </p>
+
+        <h3><mark data-highlight-style="heading" data-offset="1" data-height="0.2">Mix it up! Change things on the fly</mark></h3>
+
+        <p>MarkerHighlight supports three ways of specifying config options:</p>
+
+        <ol>
+            <li>Setting options globally within the constructor<br/><code><mark style="background-color:#ddd;">new MarkerHighlight(el, options)</mark></code></li>
+            <li>Defining reusable style definitions to use with<br/><code><mark data-highlight-style="code">&lt;mark data-highlight-style='code'&gt;</mark></code></li>
+            <li>Overriding options on a per-element basis like so:<br/><code><mark data-highlight-style="code" data-height="1.5" data-highlight-amplitude="2">&lt;mark data-height='1.5' data-highlight-amplitude='2'&gt;</mark></code></li>
+        </ol>
+
+
+
+        <p class="font3"><mark data-highlight-style="style2" style="font-size:30px;">MarkerHighlight.js is a JavaScript
+                library</mark> designed to make it <mark style="background-color: #ffaa99" data-animate="false">easy to
+                add
+                highlight effects to text</mark>. It <mark class='mark2' data-drawing-mode="scribble" data-delay='1000'
+                data-animation-speed="250">integrates nicely with page layouts too!</mark>. It's also designed to be
+            easy
+            to use and configure.</p>
+
+        <h2><mark data-animation-speed="1000" style="background-color:#577" data-height="2" data-padding="1"
+                data-drawing-mode="highlight" data-horizontal-padding="{ rough: 2 }" data-height="1.25">And it works
+                with all sorts of headings too!</mark>
+        </h2>
+
+        <p class="font2">You can get <mark class="mark5" data-highlight-wavelength='10' data-amplitude='25'><b>creative
+                    with your highlights - add
+                    waves and patterns</b> to make text stand out</mark> - <mark data-height=".8" data-padding="1"
+                data-drawing-mode="highlight">you can control each highlight individually with
+                <code>data-</code> attributes.</mark> <mark class="mark5" style="background-color: #f96"
+                data-height=".2">Or
+                try a thinner highlight.</mark> Or <mark class="mark3" data-height="0.25" data-offset="0.75">offset for
+                an
+                underline effect.</mark> Nice!</p>
+
+        <h2 class="header">
+
+            <mark data-animation-speed="850" data-padding=".1" class="mark8" data-highlight-wavelength="15"
+                data-highlight-amplitude="25" data-height="2">
+
+                <span style='color: white'>Another heading!</span>
+
+            </mark>
+
+        </h2>
+
+        <div class="container2">
+
+            <p>They respect new lines too. <mark class='mark2' data-animation-speed="1500" data-wavelength="2"
+                    data-amplitude="5" data-animation-trigger="scrollIntoView" data-height="1.15">Which means you can
+                    have highlighted text that runs on for several
+                    lines!</mark> Lorem ipsum
+                dolor sit amet consectetur adipisicing elit. <mark data-multi-line-delay=".2" class='mark2' data-delay="250" data-animation-speed="1500"
+                    data-wavelength="2" data-amplitude="5" data-animation-trigger="scrollIntoView" data-height="1.15"
+                    data-padding=".1">A accusamus hic fugit corporis maiores fuga consequatur
+                    provident, dignissimos illum facilis odio, obcaecati ullam suscipit perferendis tempore consequuntur
+                    esse
+                    quam natus.</mark> See?</p>
+
+
+                    <p><mark style="background:#44a" class='mark2' data-skew-y=".04" data-animation-speed="1500" data-wavelength="2"
+                        data-amplitude="5" data-animation-trigger="scrollIntoView" data-multi-line-delay=".5"  data-delay="5000" data-height="1.15">You can also set it up so that these highlights trigger, say, 5 seconds later...</mark></p>
+
+            <p>And resizing the page <mark class='mark5' data-height=".25">isn't a problem either. The highlights will
+                    automatically
+                    reposition to
+                    match the text</mark></p>
+
+        </div>
+
+        <p>P.S. Don't
+            <mark class="markblack" data-animation-speed="600" data-animation-trigger="scrollIntoView" data-height="1"
+                data-wavelength="1" data-amplitude="5" data-padding=".2">use</mark>
+            <mark class="markblack" data-animation-speed="800" data-animation-trigger="scrollIntoView" data-height=".75"
+                data-wavelength="4" data-amplitude="5" data-padding=".2">this</mark>
+            <mark class="markblack" data-animation-speed="400" data-animation-trigger="scrollIntoView" data-height=".6"
+                data-wavelength="4" data-amplitude="5" data-padding=".2">to</mark>
+            <mark class="markblack" data-animation-speed="800" data-animation-trigger="scrollIntoView"
+                data-animation-trigger="load" data-height=".6" data-wavelength="4" data-amplitude="5"
+                data-padding=".2">keep</mark>
+            <mark class="markblack" data-animation-speed="1200" data-animation-trigger="scrollIntoView" data-height=".6"
+                data-wavelength="4" data-amplitude="5" data-padding=".2">your</mark>
+            <mark class="markblack" data-animation-speed="800" data-animation-trigger="scrollIntoView" data-height="1"
+                data-wavelength="4" data-amplitude="5" data-padding=".2">secrets</mark>
+            <mark class="markblack" data-animation-speed="600" data-animation-trigger="scrollIntoView" data-height="1.2"
+                data-wavelength="4" data-amplitude="5" data-padding=".2">safe!</mark>
+        </p>
+
+    </div>
+
+
+</body>
+
+</html>

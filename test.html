@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarkerHighlighter Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 50px;
+            line-height: 2;
+            font-size: 18px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            color: #777;
+            font-weight: 200;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            text-align: left;
+        }
+
+        .text-to-highlight {
+            position: relative;
+        }
+
+        .highlight {
+            position: absolute;
+            overflow: hidden;
+            z-index: -1;
+            background-color: transparent;
+        }
+
+        .timer {
+            font-size: 16px;
+            color: #666;
+        }
+
+
+        mark {
+            font-weight: bold;
+            color: #222;
+        }
+
+        .mark1 {
+            background-color: #ff8888;
+        }
+
+        .mark2 {
+            background-color: #99ffaa;
+        }
+
+        .mark3 {
+            background-color: #55ffff;
+        }
+
+        .mark4 {
+            background-color: #ff55ff;
+        }
+
+        .mark5 {
+            background-color: #ffff55;
+        }
+        </style>
+    <script type="module">
+        import { MarkerHighlighter } from "./dist/index.js";
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const testCases = [
+                {
+                    attributes: [
+                        { drawingMode: 'burst', animationSpeed: 4200 },
+                        { drawingMode: 'burst', animationSpeed: 500 },
+                        { drawingMode: 'burst', animationSpeed: 1400 }
+                    ],
+                    text: 'Lorem ipsum <mark class="mark1">dolor sit</mark> amet, consectetur <mark class="mark2">adipiscing elitadipiscing elitadipiscing elitadipiscing elitadipiscing elitadipiscing elitadipiscing elit</mark>. Integer nec odio. <mark class="mark3">Praesent libero</mark>.'
+                },
+                {
+                    attributes: [
+                        { height: 2, drawingMode: 'circle', animationSpeed: 1000, circle: { curve: .25 } },
+                        { height: 2, drawingMode: 'circle', animationSpeed: 500, circle: { curve: 0.5 }  },
+                        { height: 2, drawingMode: 'circle', animationSpeed: 1400, circle: { curve: 1 } }
+                    ],
+                    text: 'Lorem ipsum <mark class="mark1">dolor sit</mark> amet, consectetur <mark class="mark2">adipiscing elitadipiscing elitadipiscing elitadipiscing elitadipiscing elitadipiscing elitadipiscing elit</mark>. Integer nec odio. <mark class="mark3">Praesent libero</mark>.'
+                },
+                {
+                    attributes: [
+                        { animationSpeed: 1000, wavelength: 10, amplitude: 5 },
+                        { animationSpeed: 1200, wavelength: 1, amplitude: 15 },
+                        { animationSpeed: 1400, wavelength: 5, amplitude: 1 }
+                    ],
+                    text: 'Lorem ipsum <mark class="mark1">dolor sit</mark> amet, consectetur <mark class="mark2">adipiscing elitadipiscing elitadipiscing elitadipiscing elitadipiscing elitadipiscing elitadipiscing elit</mark>. Integer nec odio. <mark class="mark3">Praesent libero</mark>.'
+                },
+                {
+                    attributes: [
+                        { easing: 'ease-in', markerDelay: 0 },
+                        { easing: 'ease-out', markerDelay: 100 },
+                        { easing: 'linear', markerDelay: 1500 }
+                    ],
+                    text: 'Sed cursus <mark class="mark1">ante dapibus</mark> diam. Sed nisi. <mark class="mark2">Nulla quis</mark> sem at nibh elementum <mark class="mark3">imperdiet.</mark>'
+                },
+                {
+                    attributes: [
+                        { height: 1, offset: 0 },
+                        { height: 1.0, offset: .75 },                        
+                        { height: 2.75, offset: 0 },
+                        { height: 2.75, offset: 2.75 },
+                        { height: 0.5, offset: -1 }
+                    ],
+                    text: 'Duis sagittis ipsum. <mark class="mark1">Praesent</mark> mauris. <mark class="mark2">Fusce nec</mark> tellus sed <mark class="mark3">augue semper</mark> porta <mark class="mark4">augue semper</mark> Lorem ipsum dolor sit amet Lorem ipsum dolor sit amet Lorem ipsum dolor sit amet Lorem ipsum dolor sit amet Lorem ipsum dolor sit amet blah blah blah blah <mark class="mark5">Praesent</mark>.'
+                },
+                {
+                    attributes: [
+                        { animationSpeed: 2000, wavelength: 5, amplitude: 2, multilineDelay: 0.5 }
+                    ],
+                    text: 'Lorem ipsum dolor sit amet, <mark class="mark1">consectetur adipiscing elit. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam. Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum. Praesent mauris. Fusce nec tellus sed augue semper porta</mark>. Mauris massa.'
+                },
+                ,
+                {
+                    attributes: [
+                        { animationSpeed: 1000, animate: true },
+                        { animationSpeed: 1000, animate: false },
+                    ],
+                    text: 'Lorem ipsum dolor sit amet, <mark class="mark1">consectetur adipiscing elit. Integer</mark> nec odio. Praesent libero. Sed cursus ante dapibus diam. Sed nisi. Nulla quis sem at nibh elementum imperdiet. Duis sagittis ipsum. <mark class="mark2">Praesent mauris. Fusce nec tellus sed augue semper porta</mark>. Mauris massa.'
+                }
+            ];
+
+            const tableBody = document.querySelector('#test-cases');
+            testCases.forEach((testCase, index) => {
+                const row = document.createElement('tr');
+                row.classList.add('marker-container');
+
+                const attributesCell = document.createElement('td');
+                const resultCell = document.createElement('td');
+
+                const marksHtml = testCase.text;
+                resultCell.innerHTML = marksHtml;
+
+                const timer = document.createElement('div');
+                timer.classList.add('timer');
+
+                const attributeTable = document.createElement('table');
+                attributeTable.innerHTML = `
+                    <tr>
+                        <th>Color</th>
+                        ${Object.keys(testCase.attributes[0]).map(attr => `<th>${attr}</th>`).join('')}
+                    </tr>
+                    ${testCase.attributes.map((attr, idx) => `
+                        <tr>
+                            <td class="mark${idx + 1}" style="width: 20px;"></td>
+                            ${Object.values(attr).map(value => `<td>${value}</td>`).join('')}
+                        </tr>
+                    `).join('')}
+                `;
+                attributesCell.appendChild(attributeTable);
+
+                row.appendChild(attributesCell);
+                row.appendChild(resultCell);
+                tableBody.appendChild(row);
+
+                const toKebabCase = (str) => str.replace(/([A-Z])/g, '-$1').toLowerCase();
+
+                testCase.attributes.forEach((attr, idx) => {
+                    const markElement = resultCell.querySelector(`.mark${idx + 1}`);
+                    Object.keys(attr).forEach(key => {
+                        markElement.setAttribute(`data-${toKebabCase(key)}`, attr[key]);
+                    });
+                });
+
+                const highlighter = new MarkerHighlighter(resultCell, {
+                    //selector: 'mark',
+                    drawingMode: 'highlight',
+                    animate: true,
+                    animationSpeed: 500,
+                    padding: 1,
+                    //animateSequentially: true,
+                    //highlightDelay: 0.2,
+                    height: 1,
+                    offset: 0,
+                    //brushStroke: 0.1,
+                    //variation: 1,
+                    //lineFade: .1,
+                    //markerFade: 1,
+                    //drawMode: 'highlight',
+                    horizontalPadding: {
+                        strength: .1,
+                        variation: .1,
+                        rough: 2,
+                    },
+                    highlight: {
+                        wavelength: 5,
+                        amplitude: 1,
+                        roughEnds: 2.2,
+                    },
+                    circle: {
+                        loops: 4,
+                        curve: 0,
+                        wobble: 1,
+                        thickness: 3,
+                    }
+                    //animationTrigger: 'load',
+                    //ignoreNestedElements: true,
+                    //splash: true,
+                    //splashSize: 3,
+                    //splashVariation: 2,
+                    //position: "strike"
+                });
+
+                const buttonCell = document.createElement('td');
+                row.appendChild(buttonCell);
+
+                const rerunButton = document.createElement('button');
+                rerunButton.textContent = 'Rerun Test';
+                rerunButton.addEventListener('click', () => {
+                    highlighter.rerunHighlight();
+                    const start = performance.now();
+                    resultCell.querySelectorAll('mark').forEach(markElement => {
+                        markElement.addEventListener('animationend', () => {
+                            const end = performance.now();
+                            const duration = end - start;
+                            timer.textContent = `Animation Duration: ${duration.toFixed(2)} ms`;
+                        });
+                    });
+                });
+                buttonCell.appendChild(rerunButton);
+
+                const start = performance.now();
+
+                resultCell.querySelectorAll('mark').forEach(markElement => {
+                    markElement.addEventListener('animationend', () => {
+                        const end = performance.now();
+                        const duration = end - start;
+                        timer.textContent = `Animation Duration: ${duration.toFixed(2)} ms`;
+                    });
+                });
+
+                highlighter.highlightText();
+
+                //console.log(highlighter);
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <h2>MarkerHighlighter Test Page</h2>
+    <table>
+        <tr>
+            <th>Attributes</th>
+            <th>Result</th>
+        </tr>
+        <tbody id="test-cases"></tbody>
+    </table>
+</body>
+
+</html>

@@ -1,0 +1,6 @@
+# bunfig.toml
+[default]
+tasks = ["build"]
+
+[tasks.build]
+cmd = "bun build src --outdir dist --target browser --minify"

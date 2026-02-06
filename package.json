@@ -1,0 +1,32 @@
+{
+  "name": "markerhighlight",
+  "version": "1.0.0",
+  "description": "A versatile JavaScript library for adding dynamic, customizable highlighting effects to text on web pages.",
+  "main": "dist/markerHighlight.js",
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --outfile MarkerHighlighter.js --target browser --minify",
+    "dev": "concurrently \"bun build src/index.ts --outdir dist --outfile MarkerHighlighter.js --target browser --minify --watch\" \"live-server --watch=dist --port=3000\"",
+    "test": "bun test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/solarisedesign/markerhighlight.git"
+  },
+  "keywords": [
+    "highlight",
+    "text",
+    "javascript",
+    "typescript",
+    "animation",
+    "library"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "live-server": "^1.2.2",
+    "typescript": "^5.5.2",
+    "cross-env": "^7.0.3",
+    "concurrently": "^7.0.0"
+  }
+}
