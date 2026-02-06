@@ -383,11 +383,99 @@
         .code-sample .tag { color: #89ddff; }
         .code-sample .comment { color: #546e7a; }
 
+        /* Get the Library section */
+        .get-library {
+            margin-bottom: 30px;
+        }
+
+        .download-options {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .download-btn,
+        .github-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 25px;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-decoration: none;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .download-btn {
+            background: var(--black);
+            color: var(--white);
+            border: 3px solid var(--black);
+        }
+
+        .download-btn:hover {
+            background: var(--blue);
+            border-color: var(--blue);
+        }
+
+        .download-btn .file-size {
+            font-weight: 400;
+            opacity: 0.7;
+            font-size: 12px;
+        }
+
+        .github-btn {
+            background: transparent;
+            color: var(--black);
+            border: 3px solid var(--black);
+        }
+
+        .github-btn:hover {
+            background: var(--black);
+            color: var(--white);
+        }
+
+        .usage-steps {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 16px;
+        }
+
+        .step-num {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: var(--black);
+            color: var(--white);
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .step code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: 14px;
+        }
+
         @media (max-width: 768px) {
             h1 { font-size: 48px; }
             header { padding: 60px 20px; }
             main { padding: 40px 20px; }
             .options-demo { grid-template-columns: 1fr; }
+            .download-options { flex-direction: column; }
+            .usage-steps { flex-direction: column; gap: 15px; }
         }
     </style>
 
@@ -911,20 +999,40 @@ visual effects&lt;/<span class="tag">mark</span>&gt;</pre>
     </section>
 
     <section>
-        <h2>Basic Setup</h2>
+        <h2>Get the Library</h2>
+        <div class="get-library">
+            <div class="download-options">
+                <a href="./dist/index.js" download="marker-highlight.min.js" class="download-btn">
+                    Download marker-highlight.min.js
+                    <span class="file-size">~30KB</span>
+                </a>
+                <a href="https://github.com/anthropics/marker-highlight" target="_blank" rel="noopener" class="github-btn">
+                    View on GitHub
+                </a>
+            </div>
+            <div class="usage-steps">
+                <div class="step">
+                    <span class="step-num">1</span>
+                    <span>Add the script to your page</span>
+                </div>
+                <div class="step">
+                    <span class="step-num">2</span>
+                    <span>Wrap text in <code>&lt;mark&gt;</code> tags</span>
+                </div>
+                <div class="step">
+                    <span class="step-num">3</span>
+                    <span>Initialize with <code>new MarkerHighlighter(container)</code></span>
+                </div>
+            </div>
+        </div>
         <div class="code-block">
-            import { <mark>MarkerHighlighter</mark> } from './dist/index.js';
+            <span class="comment">&lt;!-- Add to your HTML --&gt;</span>
+&lt;script type="module"&gt;
+    import { <mark>MarkerHighlighter</mark> } from './marker-highlight.min.js';
+    new <mark>MarkerHighlighter</mark>(document.body);
+&lt;/script&gt;
 
-const highlighter = new <mark>MarkerHighlighter</mark>(document.body, {
-    animationSpeed: 1000,
-    drawingMode: '<mark>highlight</mark>',
-    padding: 0.2,
-    height: 1,
-    highlight: {
-        amplitude: 0.3,
-        wavelength: 5
-    }
-});
+&lt;p&gt;This is &lt;<mark>mark</mark>&gt;highlighted text&lt;/<mark>mark</mark>&gt;.&lt;/p&gt;
         </div>
     </section>
 
