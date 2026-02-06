@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="marker-loading">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -32,6 +32,11 @@
             overflow: hidden;
             z-index: -1;
             background-color: transparent;
+        }
+
+        /* FOUC prevention: hide mark backgrounds until JS loads */
+        .marker-loading mark {
+            background-color: transparent !important;
         }
 
         mark {
@@ -187,15 +192,15 @@
         /* Multi-line demo */
         .multiline-demo {
             background: var(--black);
-            color: var(--white);
             padding: 40px;
             margin: 40px 0;
         }
 
         .multiline-demo p {
             font-size: 28px;
-            font-weight: 300;
+            font-weight: 500;
             line-height: 2;
+            color: var(--black);
         }
 
         .multiline-demo mark {
@@ -358,6 +363,9 @@
         });
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Remove loading class to allow mark backgrounds (FOUC prevention)
+            document.documentElement.classList.remove('marker-loading');
+
             const highlighter = new MarkerHighlighter(document.body, {
                 animationSpeed: 1000,
                 padding: 0.2,
@@ -398,13 +406,13 @@
             <div class="mode-card">
                 <span class="label">Circle</span>
                 <h3>Hand-drawn Circle</h3>
-                <p>Draw a <mark class="mark-red" data-drawing-mode="circle" data-animation-speed="1500" data-height="1.8" data-padding="0.5">sketchy circle</mark> around text for emphasis.</p>
+                <p>Draw a <mark class="mark-red" data-drawing-mode="circle" data-animation-speed="1500" data-height="1.8" data-padding="0.8">sketchy circle</mark> around text for emphasis.</p>
             </div>
 
             <div class="mode-card">
                 <span class="label">Burst</span>
                 <h3>Radiating Lines</h3>
-                <p>Create an <mark class="mark-blue" data-drawing-mode="burst" data-animation-speed="800" data-burst='{"count": 16, "power": 1.2}'>explosive burst</mark> effect radiating outward.</p>
+                <p>Create an <mark class="mark-blue" data-drawing-mode="burst" data-animation-speed="800" data-burst='{"count": 16, "power": 1.5}'>explosive burst</mark> effect radiating outward.</p>
             </div>
 
             <div class="mode-card">
@@ -509,15 +517,15 @@ const highlighter = new <mark>MarkerHighlighter</mark>(document.body, {
         <div class="modes-grid">
             <div class="mode-card">
                 <span class="label">Curve 0</span>
-                <p><mark class="mark-red" data-drawing-mode="circle" data-circle='{"curve": 0, "loops": 2, "thickness": 3}' data-height="2" data-padding="0.5" data-animation-speed="1200">Square shape</mark></p>
+                <p><mark class="mark-red" data-drawing-mode="circle" data-circle='{"curve": 0, "loops": 2, "thickness": 3}' data-height="2" data-padding="0.8" data-animation-speed="1200">Square shape</mark></p>
             </div>
             <div class="mode-card">
                 <span class="label">Curve 0.5</span>
-                <p><mark class="mark-yellow" data-drawing-mode="circle" data-circle='{"curve": 0.5, "loops": 3, "thickness": 2}' data-height="2" data-padding="0.5" data-animation-speed="1200">Rounded corners</mark></p>
+                <p><mark class="mark-yellow" data-drawing-mode="circle" data-circle='{"curve": 0.5, "loops": 3, "thickness": 2}' data-height="2" data-padding="0.8" data-animation-speed="1200">Rounded corners</mark></p>
             </div>
             <div class="mode-card">
                 <span class="label">Curve 1</span>
-                <p><mark class="mark-blue" data-drawing-mode="circle" data-circle='{"curve": 1, "loops": 4, "thickness": 2}' data-height="2" data-padding="0.5" data-animation-speed="1200">Full ellipse</mark></p>
+                <p><mark class="mark-blue" data-drawing-mode="circle" data-circle='{"curve": 1, "loops": 3, "thickness": 2}' data-height="2" data-padding="0.8" data-animation-speed="1200">Full ellipse</mark></p>
             </div>
         </div>
     </section>
@@ -527,15 +535,15 @@ const highlighter = new <mark>MarkerHighlighter</mark>(document.body, {
         <div class="modes-grid">
             <div class="mode-card">
                 <span class="label">Lines</span>
-                <p><mark class="mark-yellow" data-drawing-mode="burst" data-burst='{"style": "lines", "count": 12, "power": 1}' data-animation-speed="800">Straight lines</mark></p>
+                <p><mark class="mark-yellow" data-drawing-mode="burst" data-burst='{"style": "lines", "count": 14, "power": 1.5}' data-animation-speed="800">Straight lines</mark></p>
             </div>
             <div class="mode-card">
                 <span class="label">Curves</span>
-                <p><mark class="mark-red" data-drawing-mode="burst" data-burst='{"style": "curve", "count": 10, "power": 1.5}' data-animation-speed="800">Curved rays</mark></p>
+                <p><mark class="mark-red" data-drawing-mode="burst" data-burst='{"style": "curve", "count": 12, "power": 1.8}' data-animation-speed="800">Curved rays</mark></p>
             </div>
             <div class="mode-card">
                 <span class="label">Cloud</span>
-                <p><mark class="mark-blue" data-drawing-mode="burst" data-burst='{"style": "cloud", "count": 20, "power": 1.2}' data-animation-speed="1000">Cloud puffs</mark></p>
+                <p><mark class="mark-blue" data-drawing-mode="burst" data-burst='{"style": "cloud", "count": 25, "power": 1.5}' data-animation-speed="1000">Cloud puffs</mark></p>
             </div>
         </div>
     </section>

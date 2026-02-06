@@ -24,7 +24,8 @@ export default class CircleRenderer extends Renderer {
         this.animationDuration = this.options.animationSpeed || 1000;
 
         const rect = this.rect.rect;
-        this.padding = Math.max(rect.height, rect.width) * 0.25;
+        // Increase padding for more breathing room
+        this.padding = Math.max(rect.height, rect.width) * 0.4;
         this.canvas = this.createCanvas(this.padding);
         this.ctx = this.canvas.getContext('2d')!;
         this.ctx.lineCap = 'round';
@@ -39,16 +40,29 @@ export default class CircleRenderer extends Renderer {
         const { curve } = this.options.circle;
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
-        const radiusX = (rect.width / 2 + this.options.padding * rect.height) * 0.9;
-        const radiusY = (rect.height / 2 * this.options.height) * 0.9;
+
+        // Increase base radius to fully encompass text
+        const basePadding = this.options.padding * rect.height;
+        const radiusX = (rect.width / 2) + basePadding + rect.height * 0.3;
+        const radiusY = (rect.height / 2 * this.options.height) + rect.height * 0.4;
 
         const points = 64;
         for (let i = 0; i < points; i++) {
             const angle = (i / points) * Math.PI * 2;
-            const curveEffect = Math.pow(Math.sin(angle), 2) * curve + (1 - curve);
 
-            let x = centerX + radiusX * Math.cos(angle) * curveEffect;
-            let y = centerY + radiusY * Math.sin(angle) * curveEffect;
+            // Calculate point on ellipse
+            const ellipseX = radiusX * Math.cos(angle);
+            const ellipseY = radiusY * Math.sin(angle);
+
+            // Calculate point on rounded rectangle (superellipse)
+            // curve: 0 = sharp corners (more rectangular), 1 = full ellipse
+            const n = 2 + (1 - curve) * 6; // n=2 is ellipse, n=8 is nearly rectangular
+            const rectX = radiusX * Math.sign(Math.cos(angle)) * Math.pow(Math.abs(Math.cos(angle)), 2/n);
+            const rectY = radiusY * Math.sign(Math.sin(angle)) * Math.pow(Math.abs(Math.sin(angle)), 2/n);
+
+            // Interpolate between rectangle and ellipse based on curve
+            const x = centerX + rectX * (1 - curve) + ellipseX * curve;
+            const y = centerY + rectY * (1 - curve) + ellipseY * curve;
 
             this.controlPoints.push({ x, y });
         }
@@ -62,7 +76,7 @@ export default class CircleRenderer extends Renderer {
 
         let centerOffset: Point = { x: 0, y: 0 };
         let radiusOffset = 0;
-        const maxOffset = this.padding * 0.1;
+        const maxOffset = this.padding * 0.08;
 
         for (let seg = 0; seg < numSegments; seg++) {
             const segmentStart = seg * segmentSize;
