@@ -454,10 +454,14 @@
             // Code toggle buttons
             document.querySelectorAll('.code-toggle').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    const sample = btn.parentElement.querySelector('.code-sample');
-                    const isVisible = sample.classList.contains('visible');
-                    sample.classList.toggle('visible');
-                    btn.textContent = isVisible ? 'Show Code' : 'Hide Code';
+                    // Find code-sample as sibling of btn-group (parent of button)
+                    const btnGroup = btn.closest('.btn-group');
+                    const sample = btnGroup?.nextElementSibling;
+                    if (sample?.classList.contains('code-sample')) {
+                        const isVisible = sample.classList.contains('visible');
+                        sample.classList.toggle('visible');
+                        btn.textContent = isVisible ? 'Show Code' : 'Hide Code';
+                    }
                 });
             });
 
