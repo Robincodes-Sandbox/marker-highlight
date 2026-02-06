@@ -15,6 +15,7 @@ export class MarkerHighlighter {
     private animationFrameIds: Map<HTMLElement, number[]> = new Map();
     private observer: IntersectionObserver | null = null;
     private initialized: boolean = false;
+    private resizeRafId: number | null = null;
 
     constructor(element: HTMLElement, options: Record<string, any> = {}) {
         if (element.hasAttribute('data-marker-initialized')) {
@@ -246,9 +247,34 @@ export class MarkerHighlighter {
     }
 
     private highlightText(isResize: boolean = false) {
-        this.clearExistingHighlights();
+        // Collect old highlight divs — keep them visible until replacements are in place
+        const parentContainer = this.element.parentElement;
+        const oldHighlights = parentContainer
+            ? Array.from(parentContainer.querySelectorAll('.highlight'))
+            : [];
+
+        // Clean internal state without removing DOM elements
+        this.stopAllAnimations();
+        this.highlightDivs.clear();
         this.renderers.clear();
 
+        // Reset mark attributes so they can be re-processed
+        if (parentContainer) {
+            const existingMarks = parentContainer.querySelectorAll('mark[data-mark-ref]');
+            existingMarks.forEach(mark => {
+                mark.removeAttribute('data-mark-ref');
+                (mark as HTMLElement).style.position = '';
+                (mark as HTMLElement).style.zIndex = '';
+            });
+
+            const wrappedTexts = parentContainer.querySelectorAll('span[style*="z-index: 999999"]');
+            wrappedTexts.forEach(span => {
+                const text = document.createTextNode(span.textContent || '');
+                span.parentNode?.replaceChild(text, span);
+            });
+        }
+
+        // Create new highlights
         const marks = this.element.querySelectorAll('mark');
 
         marks.forEach((mark: HTMLElement, markIndex) => {
@@ -273,6 +299,9 @@ export class MarkerHighlighter {
 
             this.highlightMark(mark, combinedOptions, container, skipAnimation, isResize);
         });
+
+        // Now remove old highlights — new ones are already in the DOM
+        oldHighlights.forEach(h => h.remove());
     }
 
     private highlightMark(mark: HTMLElement, options: Record<string, any>, container: HTMLElement | null, skipAnimation: boolean, isResize: boolean) {
@@ -449,7 +478,11 @@ export class MarkerHighlighter {
     }
 
     private handleResize() {
-        this.highlightText(true);
+        if (this.resizeRafId) cancelAnimationFrame(this.resizeRafId);
+        this.resizeRafId = requestAnimationFrame(() => {
+            this.highlightText(true);
+            this.resizeRafId = null;
+        });
     }
 
     private handleContentChange() {
