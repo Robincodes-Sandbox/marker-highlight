@@ -2,5 +2,3 @@
 node_modules
 bun.lockb
 collectedfiles.txt
-dist
-dist/index.js

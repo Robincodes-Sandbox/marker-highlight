@@ -1,160 +1,173 @@
 # MarkerHighlight.js
 
-MarkerHighlight.js is a JavaScript library designed to add dynamic and customizable highlight effects to text on web pages. It offers various rendering modes and animation options to create engaging visual emphasis for selected text.
+A JavaScript library for adding dynamic, animated highlight effects to text on web pages. Canvas-based rendering with multiple drawing modes.
+
+**[Live Demo](https://marker-highlight.solarise.dev)**
 
 ## Features
 
-- Multiple rendering modes: highlight and circle
-- Customizable animation effects
-- Non-destructive DOM manipulation
-- Responsive design support
-- Easy integration with existing web projects
+- Multiple drawing modes: highlight, circle, burst, scribble, sketchout
+- Animated rendering with configurable speed and easing
+- Multi-line support with sequential line animation
+- Scroll-triggered animations via IntersectionObserver
+- Reusable named styles via `defineStyle`
+- Nested highlight support
+- Non-destructive — uses canvas overlays, doesn't modify text DOM
+- Per-element configuration via data attributes
 
 ## Installation
 
-To use MarkerHighlight.js in your project, include the following script tag in your HTML file:
+Download `dist/index.js` and include it in your page:
 
 ```html
-<script type="module" src="path/to/markerhighlight.js"></script>
+<script type="module">
+  import { MarkerHighlighter } from './dist/index.js';
+  new MarkerHighlighter(document.body);
+</script>
 ```
 
 ## Usage
 
-1. Add the `mark` tag to the text you want to highlight:
+Wrap text in `<mark>` tags and initialise the highlighter:
 
 ```html
 <p>This is <mark>highlighted text</mark>.</p>
+
+<script type="module">
+  import { MarkerHighlighter } from './dist/index.js';
+  new MarkerHighlighter(document.body, {
+    animationSpeed: 1000,
+    padding: 0.2,
+    highlight: {
+      amplitude: 0.3,
+      wavelength: 5
+    }
+  });
+</script>
 ```
 
-2. Initialize MarkerHighlight:
+### Data Attributes
 
-```javascript
-import { MarkerHighlighter } from './path/to/markerhighlight.js';
-
-const container = document.querySelector('body');
-new MarkerHighlighter(container, options);
-```
-
-3. Customize highlight options using data attributes:
+Override options per element:
 
 ```html
-<mark data-animation-speed="1000" data-height="1.5" data-drawing-mode="circle">Custom highlight</mark>
+<mark data-drawing-mode="circle" data-animation-speed="1500" data-height="1.8" data-padding="0.8">
+  Circled text
+</mark>
+
+<mark data-animation-trigger="scrollIntoView">
+  Animates on scroll
+</mark>
+
+<mark data-highlight='{"amplitude": 0.5, "wavelength": 3}'>
+  Custom wave
+</mark>
+
+<mark data-burst='{"style": "cloud", "count": 25, "power": 1.5}'>
+  Cloud burst
+</mark>
+```
+
+### Named Styles
+
+Define reusable styles and apply them with `data-highlight-style`:
+
+```javascript
+MarkerHighlighter.defineStyle('underline', {
+  animationSpeed: 400,
+  height: 0.15,
+  offset: 0.8,
+  padding: 0,
+  highlight: { amplitude: 0.2, wavelength: 5, roughEnds: 0 }
+});
+```
+
+```html
+<mark data-highlight-style="underline">Underlined text</mark>
 ```
 
 ## Configuration Options
 
-MarkerHighlight.js supports various configuration options to customize the highlight effect. Here are some key options:
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `animationSpeed` | number | 1000 | Animation duration in ms |
+| `drawingMode` | string | `'highlight'` | `highlight`, `circle`, `burst`, `scribble`, `sketchout` |
+| `height` | number | 1 | Height relative to line height |
+| `offset` | number | 0 | Vertical offset (negative = up, positive = down) |
+| `padding` | number | 0.2 | Horizontal padding around text |
+| `skewX` | number | 0 | Horizontal slant |
+| `multiLineDelay` | number | 0 | Delay between line segments (ratio of animationSpeed) |
+| `animationTrigger` | string | — | Set to `'scrollIntoView'` for scroll-triggered animation |
 
-- `animate`: Boolean to enable/disable animation
-- `animationSpeed`: Duration of the animation in milliseconds
-- `height`: Height of the highlight relative to text size
-- `drawingMode`: Rendering mode ('highlight' or 'circle')
-- `wavelength`: Wavelength of the highlight wave effect
-- `amplitude`: Amplitude of the highlight wave effect
+### Highlight options
 
-For a full list of options and their descriptions, refer to the `Options.ts` file.
+Passed via `highlight` object or `data-highlight` attribute:
 
-## Renderers
+| Option | Description |
+|--------|-------------|
+| `amplitude` | Edge waviness (0 = flat, 1+ = wavy) |
+| `wavelength` | Wave frequency |
+| `roughEnds` | Irregularity at highlight start/end |
 
-### Highlight Renderer
+### Circle options
 
-The Highlight Renderer creates a wavy highlight effect beneath the text. It uses the following key techniques:
+Passed via `circle` object or `data-circle` attribute:
 
-- Canvas-based rendering for smooth animations
-- Quadratic curves to create natural-looking waves
-- Color gradients for depth and visual interest
-- Multi-line support with individual line animations
+| Option | Description |
+|--------|-------------|
+| `curve` | Shape: 0 = square, 0.5 = rounded, 1 = ellipse |
+| `loops` | Number of overlapping strokes |
+| `thickness` | Line thickness |
+| `wobble` | Hand-drawn irregularity |
 
-Key customization options:
-- `wavelength`: Controls the frequency of waves
-- `amplitude`: Adjusts the height of waves
-- `roughEnds`: Adds irregularity to the start and end of highlights
+### Burst options
 
-### Circle Renderer
+Passed via `burst` object or `data-burst` attribute:
 
-The Circle Renderer creates a hand-drawn circular highlight effect around the text. Key features include:
+| Option | Description |
+|--------|-------------|
+| `style` | `'lines'`, `'curve'`, `'cloud'` |
+| `count` | Number of rays/puffs |
+| `power` | Ray length multiplier |
+| `randomness` | Variation in placement |
 
-- Bezier curves for smooth, natural-looking shapes
-- Multiple loops with varying opacity for a layered effect
-- Randomized "wobble" effect for an organic, hand-drawn appearance
+## Drawing Modes
 
-Key customization options:
-- `curve`: Controls the overall shape (from square to ellipse)
-- `wobble`: Adjusts the irregularity of the shape
-- `loops`: Sets the number of circular paths drawn
-- `thickness`: Controls the line thickness
+- **highlight** — Classic highlighter pen effect with wavy edges
+- **circle** — Hand-drawn circle/ellipse around text
+- **burst** — Radiating lines, curves, or cloud puffs
+- **scribble** — Chaotic hand-drawn scribble
+- **sketchout** — Rough rectangle outline
 
-## Development Setup
+## Development
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/your-username/MarkerHighlight.js.git
-   ```
-
-2. Install dependencies:
-   ```
-   npm install
-   ```
-
-3. Start the development server:
-   ```
-   npm run start
-   ```
-
-4. Open `test.html` or `index.html` in your browser to see the library in action.
-
-## Building the Project
-
-To build the project for production:
-
+```bash
+git clone https://github.com/Robincodes-Sandbox/marker-highlight.git
+cd marker-highlight
+npm install
+npm run dev      # watch build + live-server on port 3000
+npm run build    # production build to dist/
 ```
-npm run build
-```
-
-This will create a minified version of the library in the `dist` folder.
-
-## Testing
-
-The project includes a `test.html` file that showcases various configurations and use cases for MarkerHighlight.js. To run the tests:
-
-1. Start the development server (if not already running):
-   ```
-   npm run start
-   ```
-
-2. Open `test.html` in your browser.
-
-3. Observe the different highlight effects and their animations.
-
-4. Use the "Rerun Test" buttons to trigger animations again and see performance metrics.
 
 ## Project Structure
 
-- `src/`: Source files for the library
-  - `renderers/`: Contains different rendering modes (Highlight, Circle, etc.)
-  - `MarkerHighlighter.ts`: Main class for initializing and managing highlights
-  - `Options.ts`: Defines and validates configuration options
-  - `RectModel.ts`: Model handling representation of the DOM element created to display the marker highlight (BG canvas)
-  - `Color.ts`: Color manipulation utilities
-  - `Utilities.ts`: General utility functions
-- `dist/`: Compiled and minified library files
-- `test.html`: Test cases and examples
-- `index.html`: Demo page showcasing various highlight effects
-
-## Contributing
-
-Contributions to MarkerHighlight.js are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a new branch for your feature or bug fix
-3. Make your changes and commit them with clear, descriptive messages
-4. Push your changes to your fork
-5. Submit a pull request to the main repository
+```
+src/               TypeScript source
+  renderers/       Drawing mode implementations
+  MarkerHighlighter.ts
+  Options.ts
+  RectModel.ts
+  Color.ts
+  Utilities.ts
+dist/              Built library (committed)
+index.html         Demo page
+test.html          Test cases
+```
 
 ## License
 
-[MIT License](LICENSE)
+[MIT](LICENSE)
 
-## Acknowledgments
+## Author
 
-- Robin Metcalfe - Creator and main contributor
+Robin Metcalfe

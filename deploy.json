@@ -1,0 +1,8 @@
+{
+  "live": true,
+  "project": "marker-highlight",
+  "type": "static",
+  "deploy_path": "/srv/solarise/projects/marker-highlight/current",
+  "shared_path": "/srv/solarise/projects/marker-highlight/shared",
+  "build": "npm ci && npm run build"
+}

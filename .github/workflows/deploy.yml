@@ -1,0 +1,90 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main, master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read deploy.json
+        id: cfg
+        run: |
+          if [ ! -f deploy.json ]; then
+            echo "live=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          LIVE=$(node -e "const d=require('./deploy.json');process.stdout.write(String(d.live===true))")
+          echo "live=$LIVE" >> "$GITHUB_OUTPUT"
+          node -e "const d=require('./deploy.json');console.log(JSON.stringify(d))" > /tmp/deploy.json
+
+      - name: Stop (not live)
+        if: steps.cfg.outputs.live != 'true'
+        run: echo "deploy.json missing or live=false; skipping."
+
+      - name: Setup Node (for build step)
+        if: steps.cfg.outputs.live == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build (optional)
+        if: steps.cfg.outputs.live == 'true'
+        run: |
+          BUILD=$(node -e "const d=require('./deploy.json');process.stdout.write(d.build||'')")
+          if [ -n "$BUILD" ]; then
+            echo "Running build: $BUILD"
+            eval "$BUILD"
+          else
+            echo "No build step defined."
+          fi
+
+      - name: Prepare artifact
+        if: steps.cfg.outputs.live == 'true'
+        run: |
+          ART=$(node -e "const d=require('./deploy.json');process.stdout.write(d.artifact_dir||'')")
+          if [ -n "$ART" ]; then
+            tar -czf /tmp/site.tgz -C "$ART" .
+          else
+            tar -czf /tmp/site.tgz --exclude='.git' --exclude='node_modules' .
+          fi
+
+      - name: Install SSH key
+        if: steps.cfg.outputs.live == 'true'
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Upload artifact
+        if: steps.cfg.outputs.live == 'true'
+        run: |
+          HOST="${{ secrets.DEPLOY_HOST }}"
+          USER="${{ secrets.DEPLOY_USER }}"
+          DEPLOY_PATH=$(node -e "const d=require('./deploy.json');process.stdout.write(d.deploy_path)")
+          SHARED_PATH=$(node -e "const d=require('./deploy.json');process.stdout.write(d.shared_path||'')")
+          mkdir -p /tmp/remote-deploy
+          scp -o StrictHostKeyChecking=accept-new /tmp/site.tgz "$USER@$HOST:/tmp/site.tgz"
+          if [ -n "$SHARED_PATH" ]; then
+            ssh -o StrictHostKeyChecking=accept-new "$USER@$HOST" "mkdir -p '$DEPLOY_PATH' '$SHARED_PATH' && tar -xzf /tmp/site.tgz -C '$DEPLOY_PATH'"
+          else
+            ssh -o StrictHostKeyChecking=accept-new "$USER@$HOST" "mkdir -p '$DEPLOY_PATH' && tar -xzf /tmp/site.tgz -C '$DEPLOY_PATH'"
+          fi
+
+      - name: Post-deploy (optional)
+        if: steps.cfg.outputs.live == 'true'
+        run: |
+          HOST="${{ secrets.DEPLOY_HOST }}"
+          USER="${{ secrets.DEPLOY_USER }}"
+          CMD=$(node -e "const d=require('./deploy.json');process.stdout.write(d.post_deploy||'')")
+          if [ -n "$CMD" ]; then
+            DEPLOY_PATH=$(node -e "const d=require('./deploy.json');process.stdout.write(d.deploy_path)")
+            ssh -o StrictHostKeyChecking=accept-new "$USER@$HOST" "cd '$DEPLOY_PATH' && $CMD"
+          else
+            echo "No post_deploy command defined."
+          fi
