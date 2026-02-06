@@ -97,6 +97,28 @@
             max-width: 600px;
         }
 
+        .header-links {
+            display: flex;
+            gap: 20px;
+            margin-top: 25px;
+        }
+
+        .header-links a {
+            color: var(--white);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 8px 16px;
+            border: 2px solid rgba(255,255,255,0.4);
+            transition: border-color 0.2s;
+        }
+
+        .header-links a:hover {
+            border-color: var(--white);
+        }
+
         /* Main content */
         main {
             max-width: 1200px;
@@ -622,6 +644,10 @@
 <header>
     <h1><mark class="mark-blue" data-animation-speed="750" data-padding="0.5" data-height="1.3">Marker</mark><br class="mobile-break"><mark class="mark-red" data-animation-speed="750" data-padding="0.5" data-height="1.3">Highlight</mark><span>.js</span></h1>
     <p>A JavaScript library for dynamic, animated text highlighting. Canvas-based rendering with multiple drawing modes.</p>
+    <div class="header-links">
+        <a href="./dist/index.js" download="marker-highlight.min.js">Download</a>
+        <a href="https://github.com/Robincodes-Sandbox/marker-highlight" target="_blank" rel="noopener">GitHub</a>
+    </div>
 </header>
 
 <main>
