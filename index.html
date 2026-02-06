@@ -317,17 +317,24 @@
             color: var(--black);
         }
 
-        /* Show code toggle */
-        .code-toggle {
+        /* Button group for Show Code + Replay */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .code-toggle,
+        .replay-btn {
             background: transparent;
             color: var(--gray);
             border: 2px solid var(--gray);
             padding: 8px 16px;
             font-size: 12px;
-            margin-top: 20px;
         }
 
-        .code-toggle:hover {
+        .code-toggle:hover,
+        .replay-btn:hover {
             background: var(--gray);
             color: var(--white);
         }
@@ -436,6 +443,9 @@
                 }
             });
 
+            // Store highlighter for replay access
+            window._highlighter = highlighter;
+
             // Rerun button
             document.getElementById('rerun-all').addEventListener('click', () => {
                 highlighter.rerunHighlight();
@@ -444,10 +454,55 @@
             // Code toggle buttons
             document.querySelectorAll('.code-toggle').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    const sample = btn.nextElementSibling;
+                    const sample = btn.parentElement.querySelector('.code-sample');
                     const isVisible = sample.classList.contains('visible');
                     sample.classList.toggle('visible');
                     btn.textContent = isVisible ? 'Show Code' : 'Hide Code';
+                });
+            });
+
+            // Replay buttons - replay marks within the parent container
+            document.querySelectorAll('.replay-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const card = btn.closest('.mode-card');
+                    const section = btn.closest('section');
+                    const container = card || section;
+
+                    if (container) {
+                        const marks = container.querySelectorAll('mark');
+                        marks.forEach(mark => {
+                            // Access the highlighter's internal renderer map
+                            const renderers = highlighter.renderers?.get(mark);
+                            if (renderers) {
+                                renderers.forEach(renderer => {
+                                    // Clear the canvas
+                                    renderer.ctx.clearRect(0, 0, renderer.canvas.width, renderer.canvas.height);
+
+                                    // Reset renderer-specific state (BurstRenderer elements)
+                                    if (renderer.elements) {
+                                        renderer.elements.forEach(el => el.drawn = false);
+                                    }
+                                    // Reset pathSegments for CircleRenderer (they don't have drawn flag but lastProgress handles it)
+
+                                    // Reset animation state
+                                    renderer.isCompleted = false;
+                                    renderer.isAnimating = true;
+                                    renderer.animationStartTime = null;
+                                    renderer.animationProgress = 0;
+                                    renderer.lastProgress = 0;
+
+                                    // Restart animation loop
+                                    const animate = (timestamp) => {
+                                        const isAnimating = renderer.animate(timestamp);
+                                        if (isAnimating) {
+                                            requestAnimationFrame(animate);
+                                        }
+                                    };
+                                    requestAnimationFrame(animate);
+                                });
+                            }
+                        });
+                    }
                 });
             });
         });
@@ -470,7 +525,10 @@
                 <span class="label">Highlight</span>
                 <h3>Default Mode</h3>
                 <p>The classic <mark class="mark-yellow" data-drawing-mode="highlight" data-animation-speed="1200">highlighter pen effect</mark> with customizable wave patterns and rough edges.</p>
-                <button class="code-toggle">Show Code</button>
+                <div class="btn-group">
+                    <button class="replay-btn">Replay</button>
+                    <button class="code-toggle">Show Code</button>
+                </div>
                 <div class="code-sample">
                     <h5>HTML</h5>
                     <pre class="html-code">&lt;<span class="tag">mark</span> <span class="attr">class</span>=<span class="string">"mark-yellow"</span>
@@ -488,7 +546,10 @@
                 <span class="label">Circle</span>
                 <h3>Hand-drawn Circle</h3>
                 <p>Draw a <mark class="mark-red" data-drawing-mode="circle" data-animation-speed="1500" data-height="1.8" data-padding="0.8">sketchy circle</mark> around text for emphasis.</p>
-                <button class="code-toggle">Show Code</button>
+                <div class="btn-group">
+                    <button class="replay-btn">Replay</button>
+                    <button class="code-toggle">Show Code</button>
+                </div>
                 <div class="code-sample">
                     <h5>HTML</h5>
                     <pre class="html-code">&lt;<span class="tag">mark</span> <span class="attr">class</span>=<span class="string">"mark-red"</span>
@@ -510,7 +571,10 @@
                 <span class="label">Burst</span>
                 <h3>Radiating Lines</h3>
                 <p>Create an <mark class="mark-blue" data-drawing-mode="burst" data-animation-speed="800" data-burst='{"count": 16, "power": 1.5}'>explosive burst</mark> effect radiating outward.</p>
-                <button class="code-toggle">Show Code</button>
+                <div class="btn-group">
+                    <button class="replay-btn">Replay</button>
+                    <button class="code-toggle">Show Code</button>
+                </div>
                 <div class="code-sample">
                     <h5>HTML</h5>
                     <pre class="html-code">&lt;<span class="tag">mark</span> <span class="attr">class</span>=<span class="string">"mark-blue"</span>
@@ -533,7 +597,10 @@
                 <span class="label">Scribble</span>
                 <h3>Messy Scribble</h3>
                 <p>A chaotic <mark class="mark-yellow" data-drawing-mode="scribble" data-animation-speed="1000">scribbled line</mark> for a hand-drawn feel.</p>
-                <button class="code-toggle">Show Code</button>
+                <div class="btn-group">
+                    <button class="replay-btn">Replay</button>
+                    <button class="code-toggle">Show Code</button>
+                </div>
                 <div class="code-sample">
                     <h5>HTML</h5>
                     <pre class="html-code">&lt;<span class="tag">mark</span> <span class="attr">class</span>=<span class="string">"mark-yellow"</span>
@@ -551,7 +618,10 @@
                 <span class="label">Sketchout</span>
                 <h3>Sketchy Rectangle</h3>
                 <p>Draw a <mark class="mark-red" data-drawing-mode="sketchout" data-animation-speed="1200">rough rectangle</mark> outline around text.</p>
-                <button class="code-toggle">Show Code</button>
+                <div class="btn-group">
+                    <button class="replay-btn">Replay</button>
+                    <button class="code-toggle">Show Code</button>
+                </div>
                 <div class="code-sample">
                     <h5>HTML</h5>
                     <pre class="html-code">&lt;<span class="tag">mark</span> <span class="attr">class</span>=<span class="string">"mark-red"</span>
@@ -569,7 +639,10 @@
                 <span class="label">Combined</span>
                 <h3>Mix and Match</h3>
                 <p>Use <mark class="mark-blue" data-highlight-style="underline">underline style</mark> with <mark class="mark-yellow" data-highlight-style="bold">bold highlights</mark> on the same page.</p>
-                <button class="code-toggle">Show Code</button>
+                <div class="btn-group">
+                    <button class="replay-btn">Replay</button>
+                    <button class="code-toggle">Show Code</button>
+                </div>
                 <div class="code-sample">
                     <h5>HTML</h5>
                     <pre class="html-code">&lt;<span class="tag">mark</span> <span class="attr">data-highlight-style</span>=<span class="string">"underline"</span>&gt;underline&lt;/<span class="tag">mark</span>&gt;
@@ -627,7 +700,10 @@ MarkerHighlighter.defineStyle(<span class="string">'bold'</span>, {
             </div>
 
         </div>
-        <button class="code-toggle">Show Code</button>
+        <div class="btn-group">
+            <button class="replay-btn">Replay</button>
+            <button class="code-toggle">Show Code</button>
+        </div>
         <div class="code-sample">
             <h5>HTML</h5>
             <pre class="html-code"><span class="comment">&lt;!-- Height --&gt;</span>
@@ -663,7 +739,10 @@ MarkerHighlighter.defineStyle(<span class="string">'bold'</span>, {
         <div class="multiline-demo">
             <p><mark data-animation-speed="2000" data-multi-line-delay="0.3" data-highlight='{"amplitude": 0.4, "wavelength": 4}'>Highlights automatically wrap across multiple lines. Each line segment animates in sequence when you set a multi-line delay. The effect creates a natural reading flow.</mark></p>
         </div>
-        <button class="code-toggle">Show Code</button>
+        <div class="btn-group">
+            <button class="replay-btn">Replay</button>
+            <button class="code-toggle">Show Code</button>
+        </div>
         <div class="code-sample">
             <h5>HTML</h5>
             <pre class="html-code">&lt;<span class="tag">mark</span> <span class="attr">data-animation-speed</span>=<span class="string">"2000"</span>
@@ -688,7 +767,10 @@ MarkerHighlighter.defineStyle(<span class="string">'bold'</span>, {
         <div class="nesting-demo">
             <p>Highlights can be <mark class="outer" data-animation-speed="1500" data-padding="0.4" data-height="1.5">nested inside <mark class="middle" data-animation-speed="1200" data-padding="0.3" data-height="1.3">each other with <mark class="inner" data-animation-speed="900" data-padding="0.2">proper z-index handling</mark> for layered</mark> visual effects</mark>.</p>
         </div>
-        <button class="code-toggle">Show Code</button>
+        <div class="btn-group">
+            <button class="replay-btn">Replay</button>
+            <button class="code-toggle">Show Code</button>
+        </div>
         <div class="code-sample">
             <h5>HTML</h5>
             <pre class="html-code">&lt;<span class="tag">mark</span> <span class="attr">class</span>=<span class="string">"outer"</span>&gt;nested inside
@@ -709,7 +791,10 @@ visual effects&lt;/<span class="tag">mark</span>&gt;</pre>
         <div class="scroll-demo">
             <p><mark class="mark-yellow" data-animation-trigger="scrollIntoView" data-animation-speed="1500" data-height="1.3" data-padding="0.3">This highlight animates when you scroll it into view.</mark></p>
         </div>
-        <button class="code-toggle">Show Code</button>
+        <div class="btn-group">
+            <button class="replay-btn">Replay</button>
+            <button class="code-toggle">Show Code</button>
+        </div>
         <div class="code-sample">
             <h5>HTML</h5>
             <pre class="html-code">&lt;<span class="tag">mark</span> <span class="attr">data-animation-trigger</span>=<span class="string">"scrollIntoView"</span>
@@ -742,7 +827,10 @@ visual effects&lt;/<span class="tag">mark</span>&gt;</pre>
                 <p><mark class="mark-blue" data-drawing-mode="circle" data-circle='{"curve": 1, "loops": 3, "thickness": 2}' data-height="2" data-padding="0.8" data-animation-speed="1200">Full ellipse</mark></p>
             </div>
         </div>
-        <button class="code-toggle">Show Code</button>
+        <div class="btn-group">
+            <button class="replay-btn">Replay</button>
+            <button class="code-toggle">Show Code</button>
+        </div>
         <div class="code-sample">
             <h5>HTML</h5>
             <pre class="html-code">&lt;<span class="tag">mark</span> <span class="attr">data-drawing-mode</span>=<span class="string">"circle"</span>
@@ -782,7 +870,10 @@ visual effects&lt;/<span class="tag">mark</span>&gt;</pre>
                 <p><mark class="mark-blue" data-drawing-mode="burst" data-burst='{"style": "cloud", "count": 25, "power": 1.5}' data-animation-speed="1000">Cloud puffs</mark></p>
             </div>
         </div>
-        <button class="code-toggle">Show Code</button>
+        <div class="btn-group">
+            <button class="replay-btn">Replay</button>
+            <button class="code-toggle">Show Code</button>
+        </div>
         <div class="code-sample">
             <h5>HTML</h5>
             <pre class="html-code">&lt;<span class="tag">mark</span> <span class="attr">data-drawing-mode</span>=<span class="string">"burst"</span>
