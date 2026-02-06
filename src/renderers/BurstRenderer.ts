@@ -68,7 +68,7 @@ export default class BurstRenderer extends Renderer {
 
         // Gap between text and where rays start (breathing room)
         const innerGap = rect.height * 0.8;
-        const baseLength = rect.height * this.burstOptions.power * 1.5;
+        const baseLength = rect.height * this.burstOptions.power * 0.75;
 
         switch (this.burstOptions.style) {
             case 'lines':
@@ -185,7 +185,7 @@ export default class BurstRenderer extends Renderer {
     private generateCloudPuffs(centerX: number, centerY: number, rect: DOMRect, innerGap: number) {
         // Many more puffs for texture
         const puffCount = Math.max(30, this.burstOptions.count * 3);
-        const maxPuffRadius = rect.height * 0.4;
+        const maxPuffRadius = rect.height * 0.5;
 
         // Create multiple rings of puffs
         const rings = 3;
@@ -241,7 +241,7 @@ export default class BurstRenderer extends Renderer {
                 continue;
             }
 
-            const puffSize = 3 + Math.random() * 8;
+            const puffSize = 4 + Math.random() * 10;
 
             this.elements.push({
                 type: 'cloud',
