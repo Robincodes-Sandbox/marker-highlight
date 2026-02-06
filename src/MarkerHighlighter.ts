@@ -224,8 +224,8 @@ export class MarkerHighlighter {
                 mark.style.zIndex = '';
             });
 
-            // Clean up wrapped text nodes
-            const wrappedTexts = container.querySelectorAll('span[style*="z-index: 2"]');
+            // Clean up wrapped text nodes (created by ensureTextVisibility)
+            const wrappedTexts = container.querySelectorAll('span[style*="z-index: 999999"]');
             wrappedTexts.forEach(span => {
                 const text = document.createTextNode(span.textContent || '');
                 span.parentNode?.replaceChild(text, span);
@@ -382,9 +382,6 @@ export class MarkerHighlighter {
     private startSegmentAnimation(mark: HTMLElement, segmentIndex: number, skipAnimation: boolean) {
         const renderers = this.renderers.get(mark);
         if (!renderers || !renderers[segmentIndex]) return;
-
-        const renderer = renderers[segmentIndex];
-        renderer.startAnimation(skipAnimation);
 
         const options = this.getElementOptions(mark).final;
         const delay = options.delay || 0;

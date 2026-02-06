@@ -26,8 +26,9 @@ export abstract class Renderer {
     protected canvas: HTMLCanvasElement;
     protected ctx: CanvasRenderingContext2D;
     protected lastStepTime: number | null = null;
-    protected accumulatedTime: number = 0;    
+    protected accumulatedTime: number = 0;
     protected isCompleted: boolean = false;
+    protected lastProgress: number = 0;
 
     constructor({ options, color, rect }: RendererOptions) {
         this.options = options;

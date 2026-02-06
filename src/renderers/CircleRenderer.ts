@@ -7,23 +7,31 @@ interface Point {
     y: number;
 }
 
+interface PathSegment {
+    points: Point[];
+    color: string;
+    thickness: number;
+}
+
 export default class CircleRenderer extends Renderer {
     private controlPoints: Point[] = [];
-    private totalPoints: number = 1000;
+    private totalPoints: number = 200;
     private padding: number;
-    private centerOffset: Point = { x: 0, y: 0 };
-    private radiusOffset: number = 0;
+    private pathSegments: PathSegment[] = [];
 
     constructor(options: RendererOptions) {
         super(options);
         this.animationDuration = this.options.animationSpeed || 1000;
-        
+
         const rect = this.rect.rect;
         this.padding = Math.max(rect.height, rect.width) * 0.25;
         this.canvas = this.createCanvas(this.padding);
         this.ctx = this.canvas.getContext('2d')!;
-        
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
+
         this.generateControlPoints();
+        this.generatePathSegments();
     }
 
     private generateControlPoints() {
@@ -38,11 +46,61 @@ export default class CircleRenderer extends Renderer {
         for (let i = 0; i < points; i++) {
             const angle = (i / points) * Math.PI * 2;
             const curveEffect = Math.pow(Math.sin(angle), 2) * curve + (1 - curve);
-            
+
             let x = centerX + radiusX * Math.cos(angle) * curveEffect;
             let y = centerY + radiusY * Math.sin(angle) * curveEffect;
-            
+
             this.controlPoints.push({ x, y });
+        }
+    }
+
+    private generatePathSegments() {
+        const { loops, thickness, wobble } = this.options.circle;
+        const totalLength = this.totalPoints * loops;
+        const segmentSize = 10;
+        const numSegments = Math.ceil(totalLength / segmentSize);
+
+        let centerOffset: Point = { x: 0, y: 0 };
+        let radiusOffset = 0;
+        const maxOffset = this.padding * 0.1;
+
+        for (let seg = 0; seg < numSegments; seg++) {
+            const segmentStart = seg * segmentSize;
+            const segmentEnd = Math.min((seg + 1) * segmentSize, totalLength);
+            const points: Point[] = [];
+
+            for (let i = segmentStart; i <= segmentEnd; i++) {
+                const t = (i % this.totalPoints) / this.totalPoints;
+                const loopProgress = i / totalLength;
+
+                // Smooth random offset updates
+                const targetCenterX = (Math.sin(i * 0.1) * 0.5 + (Math.random() - 0.5) * 0.5) * maxOffset;
+                const targetCenterY = (Math.cos(i * 0.1) * 0.5 + (Math.random() - 0.5) * 0.5) * maxOffset;
+                const targetRadiusOffset = (Math.sin(i * 0.05) * 0.5 + (Math.random() - 0.5) * 0.5) * maxOffset;
+
+                const smoothingFactor = 0.1;
+                centerOffset.x += (targetCenterX - centerOffset.x) * smoothingFactor;
+                centerOffset.y += (targetCenterY - centerOffset.y) * smoothingFactor;
+                radiusOffset += (targetRadiusOffset - radiusOffset) * smoothingFactor;
+
+                const basePoint = this.getPointOnPath(t, radiusOffset);
+                const wobbleOffset = this.getWobbleOffset(t, wobble, loopProgress);
+
+                points.push({
+                    x: basePoint.x + wobbleOffset.x + centerOffset.x,
+                    y: basePoint.y + wobbleOffset.y + centerOffset.y
+                });
+            }
+
+            const midProgress = (segmentStart + segmentEnd) / 2 / totalLength;
+            const thicknessFactor = this.getThicknessFactor(midProgress);
+            const color = this.getColorAtProgress(midProgress);
+
+            this.pathSegments.push({
+                points,
+                color: color.rgb,
+                thickness: thickness * thicknessFactor
+            });
         }
     }
 
@@ -57,59 +115,28 @@ export default class CircleRenderer extends Renderer {
     }
 
     step(fromProgress: number, toProgress: number): void {
-        //this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        const totalSegments = this.pathSegments.length;
+        const startSegment = Math.floor(fromProgress * totalSegments);
+        const endSegment = Math.min(Math.ceil(toProgress * totalSegments), totalSegments);
 
-        const { loops, thickness, wobble } = this.options.circle;
-        const totalLength = this.totalPoints * loops;
-        const startPoint = Math.floor(fromProgress * totalLength);
-        const endPoint = Math.floor(toProgress * totalLength);
+        for (let s = startSegment; s < endSegment; s++) {
+            const segment = this.pathSegments[s];
+            if (segment.points.length < 2) continue;
 
-        this.ctx.beginPath();
+            this.ctx.strokeStyle = segment.color;
+            this.ctx.lineWidth = segment.thickness;
+            this.ctx.beginPath();
 
-        for (let i = startPoint; i <= endPoint; i++) {
-            const t = (i % this.totalPoints) / this.totalPoints;
-            const loopProgress = i / totalLength;
-            
-            this.updateCenterAndRadius(loopProgress);
-            const basePoint = this.getPointOnPath(t);
-            const wobbleOffset = this.getWobbleOffset(t, wobble, loopProgress);
-            const point = {
-                x: basePoint.x + wobbleOffset.x + this.centerOffset.x,
-                y: basePoint.y + wobbleOffset.y + this.centerOffset.y
-            };
-            
-            const thicknessFactor = this.getThicknessFactor(loopProgress);
-            this.ctx.lineWidth = thickness * thicknessFactor;
-
-            const color = this.getColorAtProgress(loopProgress);
-            this.ctx.strokeStyle = color.rgb;
-
-            if (i === startPoint) {
-                this.ctx.moveTo(point.x, point.y);
-            } else {
-                this.ctx.lineTo(point.x, point.y);
+            this.ctx.moveTo(segment.points[0].x, segment.points[0].y);
+            for (let i = 1; i < segment.points.length; i++) {
+                this.ctx.lineTo(segment.points[i].x, segment.points[i].y);
             }
 
-            // Stroke each segment individually for color variation
             this.ctx.stroke();
-            this.ctx.beginPath();
-            this.ctx.moveTo(point.x, point.y);
         }
     }
 
-    private updateCenterAndRadius(progress: number) {
-        const maxOffset = this.padding * 0.1;
-        const targetCenterX = (Math.random() - 0.5) * maxOffset;
-        const targetCenterY = (Math.random() - 0.5) * maxOffset;
-        const targetRadiusOffset = (Math.random() - 0.5) * maxOffset;
-
-        const smoothingFactor = 0.05;
-        this.centerOffset.x += (targetCenterX - this.centerOffset.x) * smoothingFactor;
-        this.centerOffset.y += (targetCenterY - this.centerOffset.y) * smoothingFactor;
-        this.radiusOffset += (targetRadiusOffset - this.radiusOffset) * smoothingFactor;
-    }
-
-    private getPointOnPath(t: number): Point {
+    private getPointOnPath(t: number, radiusOffset: number): Point {
         const index = t * this.controlPoints.length;
         const i = Math.floor(index);
         const nextI = (i + 1) % this.controlPoints.length;
@@ -119,8 +146,8 @@ export default class CircleRenderer extends Renderer {
         const p1 = this.controlPoints[nextI];
 
         return {
-            x: p0.x + (p1.x - p0.x) * frac + this.radiusOffset,
-            y: p0.y + (p1.y - p0.y) * frac + this.radiusOffset
+            x: p0.x + (p1.x - p0.x) * frac + radiusOffset,
+            y: p0.y + (p1.y - p0.y) * frac + radiusOffset
         };
     }
 
@@ -128,14 +155,14 @@ export default class CircleRenderer extends Renderer {
         const baseFrequency = 2;
         const frequencyIncrease = 4;
         const frequency = baseFrequency + loopProgress * frequencyIncrease;
-        
+
         const baseAmplitude = wobble * 0.5;
         const amplitudeIncrease = wobble * 1.5;
         const amplitude = baseAmplitude + loopProgress * amplitudeIncrease;
-        
+
         const xOffset = Math.sin(t * Math.PI * 2 * frequency) * amplitude;
         const yOffset = Math.cos((t + 0.25) * Math.PI * 2 * frequency) * amplitude;
-        
+
         return { x: xOffset, y: yOffset };
     }
 
@@ -143,7 +170,7 @@ export default class CircleRenderer extends Renderer {
         const p0 = 0.2;
         const p1 = 1.2;
         const p2 = 1;
-        
+
         if (progress < 0.45) {
             return Utilities.bezier(progress / 0.5, p0, p0, p1);
         } else {
@@ -153,7 +180,7 @@ export default class CircleRenderer extends Renderer {
 
     private getColorAtProgress(progress: number): Color {
         const baseColor = new Color(this.color.rgb);
-        const darkenAmount = progress * 30; // Darken up to 30%
+        const darkenAmount = progress * 30;
         return baseColor.darken(darkenAmount);
     }
 }

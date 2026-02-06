@@ -16,19 +16,15 @@ interface RendererOptions {
 class RendererFactory {
     static getRenderer({ mode, options, color, rect }: RendererOptions) {
         switch (mode) {
-            case 'highlight':                
+            case 'highlight':
                 return new HighlightRenderer({ options, color, rect });
             case 'burst':
-                //throw new Error(`Burst not yet implemented`);
-                return new BurstRenderer({ options, color, rect });                
+                return new BurstRenderer({ options, color, rect });
             case 'scribble':
-                throw new Error(`Scribble not yet implemented`);
                 return new ScribbleRenderer({ options, color, rect });
             case 'sketchout':
-                throw new Error(`Sketchout not yet implemented`);
                 return new SketchoutRenderer({ options, color, rect });
             case 'circle':
-                //throw new Error(`Circle not yet implemented`);
                 return new CircleRenderer({ options, color, rect });
             default:
                 throw new Error(`Unsupported drawing mode: ${mode}`);

@@ -14,22 +14,23 @@ interface BurstElement {
     points: { x: number; y: number }[];
     color: string;
     lineWidth: number;
+    drawn: boolean;
 }
 
 export default class BurstRenderer extends Renderer {
     private burstOptions: BurstOptions;
     private elements: BurstElement[] = [];
-    private centerOffset: { x: number; y: number } = { x: 0, y: 0 };
-    private radiusOffset: number = 0;
+    private padding: number = 0;
 
     constructor(options: RendererOptions) {
         super(options);
         this.burstOptions = {
-            style: options.burst?.style || 'lines',
-            power: options.burst?.power || 1,
-            count: options.burst?.count || 10,
-            randomness: options.burst?.randomness || 0.5
+            style: options.options.burst?.style || 'lines',
+            power: options.options.burst?.power || 1,
+            count: options.options.burst?.count || 10,
+            randomness: options.options.burst?.randomness || 0.5
         };
+        this.animationDuration = this.options.animationSpeed || 1000;
         this.validateBurstOptions();
     }
 
@@ -42,18 +43,20 @@ export default class BurstRenderer extends Renderer {
 
     setBounds(): DrawResult {
         const rect = this.rect.rect;
-        const padding = rect.height * Math.max(1.5, this.burstOptions.power);
-        
-        this.canvas = this.createCanvas(padding);
+        this.padding = rect.height * Math.max(1.5, this.burstOptions.power);
+
+        this.canvas = this.createCanvas(this.padding);
         this.ctx = this.canvas.getContext('2d')!;
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
 
         this.generateElements();
 
         return {
             canvas: this.canvas,
-            height: rect.height + 2 * padding,
-            verticalOffset: padding,
-            horizontalPadding: padding
+            height: rect.height + 2 * this.padding,
+            verticalOffset: this.padding,
+            horizontalPadding: this.padding
         };
     }
 
@@ -87,7 +90,7 @@ export default class BurstRenderer extends Renderer {
                     element = this.createCloudElement(startX, startY, angle, length);
                     break;
                 default:
-                    throw new Error(`Unsupported burst style: ${this.burstOptions.style}`);
+                    element = this.createLineElement(startX, startY, endX, endY);
             }
 
             this.elements.push(element);
@@ -99,7 +102,8 @@ export default class BurstRenderer extends Renderer {
             type: 'line',
             points: [{ x: startX, y: startY }, { x: endX, y: endY }],
             color: this.getRandomColor().rgb,
-            lineWidth: this.getRandomLineWidth()
+            lineWidth: this.getRandomLineWidth(),
+            drawn: false
         };
     }
 
@@ -116,7 +120,8 @@ export default class BurstRenderer extends Renderer {
                 { x: endX, y: endY }
             ],
             color: this.getRandomColor().rgb,
-            lineWidth: this.getRandomLineWidth()
+            lineWidth: this.getRandomLineWidth(),
+            drawn: false
         };
     }
 
@@ -133,7 +138,8 @@ export default class BurstRenderer extends Renderer {
                 { x: endX, y: endY }
             ],
             color: this.getRandomColor().rgb,
-            lineWidth: this.getRandomLineWidth()
+            lineWidth: this.getRandomLineWidth(),
+            drawn: false
         };
     }
 
@@ -144,19 +150,19 @@ export default class BurstRenderer extends Renderer {
             type: 'cloud',
             points: [{ x, y }],
             color: this.getRandomCloudColor().rgb,
-            lineWidth: length * 0.5 // Use lineWidth to store cloud size
+            lineWidth: length * 0.5,
+            drawn: false
         };
     }
 
     step(fromProgress: number, toProgress: number): void {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        const startIndex = Math.floor(fromProgress * this.elements.length);
+        const endIndex = Math.min(Math.ceil(toProgress * this.elements.length), this.elements.length);
 
-        this.updateOffsets();
-
-        const elementsToRender = Math.floor(toProgress * this.elements.length);
-
-        for (let i = 0; i < elementsToRender; i++) {
+        for (let i = startIndex; i < endIndex; i++) {
             const element = this.elements[i];
+            if (element.drawn) continue;
+
             this.ctx.strokeStyle = element.color;
             this.ctx.fillStyle = element.color;
             this.ctx.lineWidth = element.lineWidth;
@@ -172,46 +178,33 @@ export default class BurstRenderer extends Renderer {
                     this.drawCloud(element);
                     break;
             }
+
+            element.drawn = true;
         }
     }
 
     private drawLine(element: BurstElement) {
         const [start, end] = element.points;
         this.ctx.beginPath();
-        this.ctx.moveTo(start.x + this.centerOffset.x, start.y + this.centerOffset.y);
-        this.ctx.lineTo(end.x + this.centerOffset.x, end.y + this.centerOffset.y);
+        this.ctx.moveTo(start.x, start.y);
+        this.ctx.lineTo(end.x, end.y);
         this.ctx.stroke();
     }
 
     private drawCurve(element: BurstElement) {
         const [start, control, end] = element.points;
         this.ctx.beginPath();
-        this.ctx.moveTo(start.x + this.centerOffset.x, start.y + this.centerOffset.y);
-        this.ctx.quadraticCurveTo(
-            control.x + this.centerOffset.x, control.y + this.centerOffset.y,
-            end.x + this.centerOffset.x, end.y + this.centerOffset.y
-        );
+        this.ctx.moveTo(start.x, start.y);
+        this.ctx.quadraticCurveTo(control.x, control.y, end.x, end.y);
         this.ctx.stroke();
     }
 
     private drawCloud(element: BurstElement) {
         const { x, y } = element.points[0];
-        const size = element.lineWidth * (1 + this.radiusOffset);
+        const size = element.lineWidth;
         this.ctx.beginPath();
-        this.ctx.arc(x + this.centerOffset.x, y + this.centerOffset.y, size, 0, Math.PI * 2);
+        this.ctx.arc(x, y, size, 0, Math.PI * 2);
         this.ctx.fill();
-    }
-
-    private updateOffsets() {
-        const maxOffset = this.canvas.width * 0.01;
-        this.centerOffset.x += (Math.random() - 0.5) * maxOffset;
-        this.centerOffset.y += (Math.random() - 0.5) * maxOffset;
-        this.radiusOffset += (Math.random() - 0.5) * 0.1;
-
-        // Constrain offsets
-        this.centerOffset.x = Math.max(Math.min(this.centerOffset.x, maxOffset), -maxOffset);
-        this.centerOffset.y = Math.max(Math.min(this.centerOffset.y, maxOffset), -maxOffset);
-        this.radiusOffset = Math.max(Math.min(this.radiusOffset, 0.2), -0.2);
     }
 
     private getRandomAngle(index: number): number {

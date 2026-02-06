@@ -171,9 +171,9 @@ const validationRules = [
     {
         property: 'drawingMode',
         type: 'enum',
-        validValues: ['highlight', 'circle', 'burst' /*, 'scribble', 'sketchout', 'circle'*/],
+        validValues: ['highlight', 'circle', 'burst', 'scribble', 'sketchout'],
         default: 'highlight',
-        description: 'The drawing mode to use for the highlight. Accepted values are "highlight" for a standard highlight effect. (More TBC)'
+        description: 'The drawing mode to use for the highlight. Options: highlight (wavy marker), circle (hand-drawn circle), burst (radiating lines), scribble (messy scribble), sketchout (sketchy rectangle outline)'
     },
     {
         property: 'debug',

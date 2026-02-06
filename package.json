@@ -2,10 +2,12 @@
   "name": "markerhighlight",
   "version": "1.0.0",
   "description": "A versatile JavaScript library for adding dynamic, customizable highlighting effects to text on web pages.",
-  "main": "dist/markerHighlight.js",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "type": "module",
   "scripts": {
-    "build": "bun build src/index.ts --outdir dist --outfile MarkerHighlighter.js --target browser --minify",
-    "dev": "concurrently \"bun build src/index.ts --outdir dist --outfile MarkerHighlighter.js --target browser --minify --watch\" \"live-server --watch=dist --port=3000\"",
+    "build": "bun build src/index.ts --outdir dist --target browser --minify",
+    "dev": "concurrently \"bun build src/index.ts --outdir dist --target browser --watch\" \"live-server --port=3000\"",
     "test": "bun test"
   },
   "repository": {
