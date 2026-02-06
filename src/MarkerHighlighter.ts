@@ -16,6 +16,7 @@ export class MarkerHighlighter {
     private observer: IntersectionObserver | null = null;
     private initialized: boolean = false;
     private resizeRafId: number | null = null;
+    private lastWidth: number = window.innerWidth;
 
     constructor(element: HTMLElement, options: Record<string, any> = {}) {
         if (element.hasAttribute('data-marker-initialized')) {
@@ -478,6 +479,10 @@ export class MarkerHighlighter {
     }
 
     private handleResize() {
+        const w = window.innerWidth;
+        if (w === this.lastWidth) return; // height-only change (mobile address bar) — no text reflow
+        this.lastWidth = w;
+
         if (this.resizeRafId) cancelAnimationFrame(this.resizeRafId);
         this.resizeRafId = requestAnimationFrame(() => {
             this.highlightText(true);
