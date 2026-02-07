@@ -24,7 +24,7 @@ export default class HighlightRenderer extends Renderer {
         this.animationDuration = this.options.animationSpeed;
         
         const rect = this.rect.rect;
-        this.maxFrayOffset = 4 * (this.options.highlight.roughEnds || 0);
+        this.maxFrayOffset = 2 * (this.options.highlight.roughEnds || 0);
         this.paddingAmount = this.calculatePadding(rect);
 
         this.highlightHeight = rect.height * (this.options.height || 1);
@@ -115,7 +115,7 @@ export default class HighlightRenderer extends Renderer {
 
             this.ctx.beginPath();
             this.ctx.strokeStyle = this.getLineGradient(lineIndex);
-            this.ctx.lineWidth = this.lineHeight * 2;
+            this.ctx.lineWidth = this.lineHeight * 3;
             
 
             for (let i = startIndex; i <= endIndex; i++) {
