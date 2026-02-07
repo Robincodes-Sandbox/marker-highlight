@@ -90,6 +90,21 @@
             background: var(--yellow);
         }
 
+        .credit {
+            font-size: 12px;
+            letter-spacing: 1px;
+            opacity: 0.5;
+        }
+
+        .credit a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .credit a:hover {
+            opacity: 1;
+        }
+
         h1 {
             font-size: 72px;
             font-weight: 900;
@@ -666,6 +681,7 @@
         <a href="./dist/marker-highlight.min.js" download="marker-highlight.min.js">Download</a>
         <a href="https://github.com/Robincodes-Sandbox/marker-highlight" target="_blank" rel="noopener">GitHub</a>
     </div>
+    <p class="credit" style="position: absolute; bottom: 20px; right: 40px;"><a href="https://solarise.dev" target="_blank" rel="noopener">Built by solarise.dev</a></p>
 </header>
 
 <main>
@@ -1096,10 +1112,13 @@ visual effects&lt;/<span class="tag">mark</span>&gt;</pre>
 
 <footer>
     <p>MarkerHighlight.js</p>
-    <div class="shapes">
-        <div class="shape circle"></div>
-        <div class="shape triangle"></div>
-        <div class="shape square"></div>
+    <div style="display: flex; align-items: center; gap: 30px;">
+        <div class="shapes">
+            <div class="shape circle"></div>
+            <div class="shape triangle"></div>
+            <div class="shape square"></div>
+        </div>
+        <p class="credit"><a href="https://solarise.dev" target="_blank" rel="noopener">Built by solarise.dev</a></p>
     </div>
 </footer>
 
