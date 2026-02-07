@@ -2,12 +2,12 @@
   "name": "markerhighlight",
   "version": "1.0.0",
   "description": "A versatile JavaScript library for adding dynamic, customizable highlighting effects to text on web pages.",
-  "main": "dist/index.js",
-  "module": "dist/index.js",
+  "main": "dist/marker-highlight.min.js",
+  "module": "dist/marker-highlight.min.js",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --outdir=dist --format=esm --target=es2020 --minify",
-    "dev": "esbuild src/index.ts --bundle --outdir=dist --format=esm --target=es2020 --watch --servedir=. --serve=0.0.0.0:3000",
+    "build": "esbuild src/index.ts --bundle --outfile=dist/marker-highlight.min.js --format=esm --target=es2020 --minify",
+    "dev": "esbuild src/index.ts --bundle --outfile=dist/marker-highlight.min.js --format=esm --target=es2020 --watch --servedir=. --serve=0.0.0.0:3000",
     "test": "bun test"
   },
   "repository": {
