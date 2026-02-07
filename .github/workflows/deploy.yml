@@ -66,14 +66,15 @@ jobs:
         run: |
           HOST="${{ secrets.DEPLOY_HOST }}"
           USER="${{ secrets.DEPLOY_USER }}"
+          PROJECT=$(node -e "const d=require('./deploy.json');process.stdout.write(d.project||'site')")
           DEPLOY_PATH=$(node -e "const d=require('./deploy.json');process.stdout.write(d.deploy_path)")
           SHARED_PATH=$(node -e "const d=require('./deploy.json');process.stdout.write(d.shared_path||'')")
-          mkdir -p /tmp/remote-deploy
-          scp -o StrictHostKeyChecking=accept-new /tmp/site.tgz "$USER@$HOST:/tmp/site.tgz"
+          REMOTE_TGZ="/tmp/deploy-${PROJECT}.tgz"
+          scp -o StrictHostKeyChecking=accept-new /tmp/site.tgz "$USER@$HOST:$REMOTE_TGZ"
           if [ -n "$SHARED_PATH" ]; then
-            ssh -o StrictHostKeyChecking=accept-new "$USER@$HOST" "rm -rf '$DEPLOY_PATH' && mkdir -p '$DEPLOY_PATH' '$SHARED_PATH' && tar -xzf /tmp/site.tgz -C '$DEPLOY_PATH'"
+            ssh -o StrictHostKeyChecking=accept-new "$USER@$HOST" "rm -rf '$DEPLOY_PATH' && mkdir -p '$DEPLOY_PATH' '$SHARED_PATH' && tar -xzf '$REMOTE_TGZ' -C '$DEPLOY_PATH' && rm -f '$REMOTE_TGZ'"
           else
-            ssh -o StrictHostKeyChecking=accept-new "$USER@$HOST" "rm -rf '$DEPLOY_PATH' && mkdir -p '$DEPLOY_PATH' && tar -xzf /tmp/site.tgz -C '$DEPLOY_PATH'"
+            ssh -o StrictHostKeyChecking=accept-new "$USER@$HOST" "rm -rf '$DEPLOY_PATH' && mkdir -p '$DEPLOY_PATH' && tar -xzf '$REMOTE_TGZ' -C '$DEPLOY_PATH' && rm -f '$REMOTE_TGZ'"
           fi
 
       - name: Post-deploy (optional)
