@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "build": "esbuild src/index.ts --bundle --outdir=dist --format=esm --target=es2020 --minify",
-    "dev": "concurrently \"esbuild src/index.ts --bundle --outdir=dist --format=esm --target=es2020 --watch\" \"live-server --port=3000\"",
+    "dev": "esbuild src/index.ts --bundle --outdir=dist --format=esm --target=es2020 --watch --servedir=. --serve=0.0.0.0:3000",
     "test": "bun test"
   },
   "repository": {
@@ -26,10 +26,7 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.14.9",
-    "concurrently": "^7.0.0",
-    "cross-env": "^7.0.3",
     "esbuild": "^0.27.3",
-    "live-server": "^1.2.2",
     "typescript": "^5.5.2"
   }
 }
