@@ -200,11 +200,14 @@ export class PretextHighlighter {
     delete highlightDefaults.paragraphGap
     this.options = this.validator.validate(highlightDefaults)
 
-    // Stage element (absolute-positioned children go here)
-    this.stage = document.createElement('div')
-    this.stage.className = 'pretext-stage'
-    this.stage.style.position = 'relative'
-    container.appendChild(this.stage)
+    // Ensure container is a positioned element so absolutely-positioned
+    // children (lines, highlights, SVG shapes) all share the same coordinate system
+    if (window.getComputedStyle(container).position === 'static') {
+      container.style.position = 'relative'
+    }
+
+    // Stage is just a logical grouping element (no positioning)
+    this.stage = container
 
     // Measurement canvas
     const mc = document.createElement('canvas')
@@ -276,7 +279,11 @@ export class PretextHighlighter {
     window.removeEventListener('resize', this.handleResize)
     this.stopAllAnimations()
     this.observer?.disconnect()
-    this.stage.remove()
+    // Remove managed elements (lines and highlights)
+    for (const el of this.linePool) el.remove()
+    for (const el of this.highlightPool) el.remove()
+    this.linePool = []
+    this.highlightPool = []
   }
 
   get metrics(): PretextMetrics {
@@ -675,10 +682,13 @@ export class PretextHighlighter {
       el.textContent = line.text
     }
 
-    // Set stage height
-    const lastLine = this.lines[this.lines.length - 1]
-    if (lastLine) {
-      this.stage.style.height = `${lastLine.y + this.lineHeight + 40}px`
+    // Set container height to fit all content (use max Y across all columns)
+    let maxY = 0
+    for (const line of this.lines) {
+      if (line.y > maxY) maxY = line.y
+    }
+    if (maxY > 0) {
+      this.stage.style.height = `${maxY + this.lineHeight + 40}px`
     }
 
     // Remove old highlights
