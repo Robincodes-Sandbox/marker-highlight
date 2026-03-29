@@ -400,10 +400,11 @@ export class PretextHighlighter {
     let bestLines: PlacedLine[] = []
     let bestDiff = Infinity
 
-    // Scan targets from slightly below ideal to well above it, in lineHeight steps
-    const scanStart = idealTarget - this.lineHeight * 4
-    const scanEnd = idealTarget + this.lineHeight * 12
-    for (let target = scanStart; target <= scanEnd; target += this.lineHeight) {
+    // Scan targets in half-lineHeight steps for finer granularity
+    const step = Math.max(1, Math.round(this.lineHeight / 2))
+    const scanStart = idealTarget - this.lineHeight * 6
+    const scanEnd = idealTarget + this.lineHeight * 14
+    for (let target = scanStart; target <= scanEnd; target += step) {
       const result = this.flowIntoColumns(columnWidth, target)
       const colHeights = this.getColumnHeights(result)
 
@@ -420,8 +421,8 @@ export class PretextHighlighter {
         bestLines = result
       }
 
-      // Good enough — within one line height
-      if (diff <= this.lineHeight) break
+      // Perfect — columns are equal
+      if (diff === 0) break
     }
 
     // Fallback: if no result filled all columns, use simple target
