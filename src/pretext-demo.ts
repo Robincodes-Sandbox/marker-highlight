@@ -8,7 +8,7 @@ const FONT_MEASURE = '17px "Source Serif 4", Georgia, "Times New Roman", serif'
 const LINE_HEIGHT = 27
 const COL_GAP = 36
 const PADDING = 0
-const OBSTACLE_MARGIN = 18
+const OBSTACLE_MARGIN = 12
 
 // --- Article text ---
 const PARAGRAPHS = [
@@ -147,72 +147,72 @@ interface ShapeDef {
 const SHAPES: ShapeDef[] = [
   {
     id: 'ring',
-    svg: `<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#E53935" stop-opacity="0.12"/>
-          <stop offset="100%" stop-color="#FF8A65" stop-opacity="0.18"/>
+          <stop offset="0%" stop-color="#E53935" stop-opacity="0.14"/>
+          <stop offset="100%" stop-color="#FF8A65" stop-opacity="0.20"/>
         </linearGradient>
       </defs>
-      <circle cx="80" cy="80" r="72" fill="none" stroke="url(#ringGrad)" stroke-width="14"/>
-      <circle cx="80" cy="80" r="50" fill="none" stroke="#E5393510" stroke-width="3" stroke-dasharray="8 6"/>
+      <circle cx="50" cy="50" r="44" fill="none" stroke="url(#ringGrad)" stroke-width="10"/>
+      <circle cx="50" cy="50" r="30" fill="none" stroke="#E5393510" stroke-width="2" stroke-dasharray="6 5"/>
     </svg>`,
-    width: 150,
-    height: 150,
+    width: 88,
+    height: 88,
     column: 0,
-    topFraction: 0.12,
+    topFraction: 0.10,
     float: 'right',
   },
   {
     id: 'diamond',
-    svg: `<svg viewBox="0 0 140 180" xmlns="http://www.w3.org/2000/svg">
+    svg: `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="diaGrad" x1="0" y1="0" x2="0.5" y2="1">
-          <stop offset="0%" stop-color="#1E88E5" stop-opacity="0.10"/>
-          <stop offset="100%" stop-color="#7C4DFF" stop-opacity="0.16"/>
+          <stop offset="0%" stop-color="#1E88E5" stop-opacity="0.12"/>
+          <stop offset="100%" stop-color="#7C4DFF" stop-opacity="0.18"/>
         </linearGradient>
       </defs>
-      <polygon points="70,8 134,90 70,172 6,90" fill="url(#diaGrad)" stroke="#1E88E510" stroke-width="2"/>
-      <polygon points="70,32 112,90 70,148 28,90" fill="none" stroke="#7C4DFF0C" stroke-width="1.5"/>
+      <polygon points="50,6 96,60 50,114 4,60" fill="url(#diaGrad)" stroke="#1E88E510" stroke-width="2"/>
+      <polygon points="50,24 78,60 50,96 22,60" fill="none" stroke="#7C4DFF0C" stroke-width="1.5"/>
     </svg>`,
-    width: 130,
-    height: 165,
+    width: 88,
+    height: 105,
     column: 1,
-    topFraction: 0.28,
-    float: 'center',
+    topFraction: 0.42,
+    float: 'right',
   },
   {
     id: 'wave',
-    svg: `<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+    svg: `<svg viewBox="0 0 140 80" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="waveGrad" x1="0" y1="0" x2="1" y2="0.5">
-          <stop offset="0%" stop-color="#43A047" stop-opacity="0.10"/>
-          <stop offset="100%" stop-color="#00897B" stop-opacity="0.14"/>
+          <stop offset="0%" stop-color="#43A047" stop-opacity="0.12"/>
+          <stop offset="100%" stop-color="#00897B" stop-opacity="0.16"/>
         </linearGradient>
       </defs>
-      <path d="M10,60 Q50,15 100,60 T190,60" fill="none" stroke="url(#waveGrad)" stroke-width="28" stroke-linecap="round"/>
-      <path d="M20,75 Q60,40 110,75 T195,75" fill="none" stroke="#43A04708" stroke-width="8" stroke-linecap="round"/>
+      <path d="M8,40 Q38,10 70,40 T132,40" fill="none" stroke="url(#waveGrad)" stroke-width="20" stroke-linecap="round"/>
+      <path d="M14,52 Q44,30 76,52 T136,52" fill="none" stroke="#43A04708" stroke-width="6" stroke-linecap="round"/>
     </svg>`,
-    width: 190,
-    height: 110,
+    width: 120,
+    height: 68,
     column: 2,
-    topFraction: 0.52,
+    topFraction: 0.20,
     float: 'left',
   },
   {
     id: 'dots',
-    svg: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="30" cy="30" r="18" fill="#FF980014"/>
-      <circle cx="85" cy="25" r="12" fill="#FF980010"/>
-      <circle cx="55" cy="75" r="22" fill="#FF980018"/>
-      <circle cx="95" cy="85" r="10" fill="#FF98000E"/>
-      <circle cx="25" cy="95" r="8" fill="#FF980012"/>
+    svg: `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="20" cy="20" r="14" fill="#FF980016"/>
+      <circle cx="58" cy="16" r="9" fill="#FF980012"/>
+      <circle cx="38" cy="52" r="16" fill="#FF98001A"/>
+      <circle cx="65" cy="58" r="8" fill="#FF980010"/>
+      <circle cx="16" cy="65" r="6" fill="#FF980014"/>
     </svg>`,
-    width: 115,
-    height: 115,
-    column: 1,
-    topFraction: 0.68,
-    float: 'right',
+    width: 72,
+    height: 72,
+    column: 0,
+    topFraction: 0.62,
+    float: 'left',
   },
 ]
 

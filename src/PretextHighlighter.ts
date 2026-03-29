@@ -86,6 +86,7 @@ interface PlacedLine {
   paragraphIndex: number
   charStart: number
   charEnd: number
+  column: number
 }
 
 interface HighlightSegment {
@@ -369,6 +370,7 @@ export class PretextHighlighter {
           text: line.text, width: line.width,
           paragraphIndex: pi,
           charStart: charOffset, charEnd: charOffset + line.text.length,
+          column: 0,
         })
 
         charOffset += line.text.length
@@ -383,17 +385,55 @@ export class PretextHighlighter {
 
   // --- Multi-column layout ---
 
-  private layoutColumns(columnWidth: number, containerWidth: number): PlacedLine[] {
-    // First pass: lay out everything in a single column to estimate total height
+  private layoutColumns(columnWidth: number, _containerWidth: number): PlacedLine[] {
+    // Find the target column height that produces the most balanced columns.
+    // Strategy: scan a range of targets around the ideal (totalHeight / columns)
+    // and pick the one with the smallest height difference between columns.
+
     const singlePass = this.layoutSingleColumnRaw(columnWidth)
     const totalHeight = singlePass.length > 0
       ? singlePass[singlePass.length - 1].y + this.lineHeight + this.paragraphGap
       : 0
 
-    // Target column height (with some padding to avoid orphans)
-    const targetColHeight = Math.ceil(totalHeight / this.columns) + this.lineHeight * 2
+    const idealTarget = Math.ceil(totalHeight / this.columns)
 
-    // Second pass: flow text across columns
+    let bestLines: PlacedLine[] = []
+    let bestDiff = Infinity
+
+    // Scan targets from slightly below ideal to well above it, in lineHeight steps
+    const scanStart = idealTarget - this.lineHeight * 4
+    const scanEnd = idealTarget + this.lineHeight * 12
+    for (let target = scanStart; target <= scanEnd; target += this.lineHeight) {
+      const result = this.flowIntoColumns(columnWidth, target)
+      const colHeights = this.getColumnHeights(result)
+
+      // All columns must have content
+      const filledCols = colHeights.filter(h => h > 0).length
+      if (filledCols < this.columns) continue
+
+      const maxH = Math.max(...colHeights)
+      const minH = Math.min(...colHeights)
+      const diff = maxH - minH
+
+      if (diff < bestDiff) {
+        bestDiff = diff
+        bestLines = result
+      }
+
+      // Good enough — within one line height
+      if (diff <= this.lineHeight) break
+    }
+
+    // Fallback: if no result filled all columns, use simple target
+    if (bestLines.length === 0) {
+      bestLines = this.flowIntoColumns(columnWidth, idealTarget)
+    }
+
+    return bestLines
+  }
+
+  /** Flow all text into columns with the given target column height */
+  private flowIntoColumns(columnWidth: number, targetColHeight: number): PlacedLine[] {
     const lines: PlacedLine[] = []
     let currentCol = 0
     let y = 0
@@ -421,6 +461,7 @@ export class PretextHighlighter {
           text: line.text, width: line.width,
           paragraphIndex: pi,
           charStart: charOffset, charEnd: charOffset + line.text.length,
+          column: currentCol,
         })
 
         charOffset += line.text.length
@@ -431,6 +472,16 @@ export class PretextHighlighter {
       y += this.paragraphGap
     }
     return lines
+  }
+
+  /** Get the bottom Y of each column from placed lines */
+  private getColumnHeights(lines: PlacedLine[]): number[] {
+    const heights = new Array(this.columns).fill(0)
+    for (const line of lines) {
+      const bottom = line.y + this.lineHeight
+      if (bottom > heights[line.column]) heights[line.column] = bottom
+    }
+    return heights
   }
 
   /** Raw single-column layout without obstacles (for height estimation) */
@@ -450,6 +501,7 @@ export class PretextHighlighter {
           text: line.text, width: line.width,
           paragraphIndex: pi,
           charStart: charOffset, charEnd: charOffset + line.text.length,
+          column: 0,
         })
         charOffset += line.text.length
         while (charOffset < paraText.length && /\s/.test(paraText[charOffset])) charOffset++
@@ -500,7 +552,9 @@ export class PretextHighlighter {
     }
 
     const width = right - left
-    if (width < 60) return { x: colX, width: colWidth } // fallback if too narrow
+    // If obstacle narrows the line too much, use full column width
+    // (the line will overlap the obstacle, but it's better than 3-word lines)
+    if (width < colWidth * 0.4) return { x: colX, width: colWidth }
     return { x: left, width }
   }
 
