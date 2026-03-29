@@ -6,8 +6,10 @@
   "module": "dist/marker-highlight.min.js",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --outfile=dist/marker-highlight.min.js --format=esm --target=es2020 --minify",
+    "build": "esbuild src/index.ts --bundle --outfile=dist/marker-highlight.min.js --format=esm --target=es2020 --minify && esbuild src/pretext-demo.ts --bundle --outfile=dist/pretext-demo.min.js --format=esm --target=es2020 --minify",
+    "build:pretext": "esbuild src/pretext-demo.ts --bundle --outfile=dist/pretext-demo.min.js --format=esm --target=es2020 --minify",
     "dev": "esbuild src/index.ts --bundle --outfile=dist/marker-highlight.min.js --format=esm --target=es2020 --watch --servedir=. --serve=0.0.0.0:3000",
+    "dev:pretext": "esbuild src/pretext-demo.ts --bundle --outfile=dist/pretext-demo.min.js --format=esm --target=es2020 --watch --servedir=. --serve=0.0.0.0:3001",
     "test": "bun test"
   },
   "repository": {
@@ -28,5 +30,8 @@
     "@types/node": "^20.14.9",
     "esbuild": "^0.27.3",
     "typescript": "^5.5.2"
+  },
+  "dependencies": {
+    "@chenglou/pretext": "^0.0.3"
   }
 }

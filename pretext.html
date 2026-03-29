@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pretext + MarkerHighlight — Fast Arithmetic Text Layout</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --page-bg: #FAFAF7;
+            --text: #2C2C2C;
+            --text-muted: #777;
+            --accent: #E53935;
+            --border: #E8E6E1;
+        }
+
+        body {
+            background: var(--page-bg);
+            color: var(--text);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            line-height: 1.5;
+        }
+
+        /* --- Header --- */
+        .page-header {
+            padding: 32px 48px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .page-header h1 {
+            font-family: 'Source Serif 4', Georgia, serif;
+            font-size: 22px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        .page-header h1 span {
+            color: var(--accent);
+        }
+
+        .header-subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            max-width: 460px;
+        }
+
+        /* --- Metrics bar --- */
+        .metrics-bar {
+            padding: 10px 48px;
+            background: #F0EFEB;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+            color: var(--text-muted);
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .metrics-bar strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        /* --- Pretext section --- */
+        .section-label {
+            padding: 20px 48px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+        }
+
+        #pretext-container {
+            position: relative;
+            margin: 0 48px 48px;
+            min-height: 400px;
+        }
+
+        .pretext-line {
+            color: var(--text);
+        }
+
+        .svg-shape {
+            transition: opacity 0.3s ease;
+        }
+
+        /* --- Style legend --- */
+        .legend {
+            margin: 0 48px 24px;
+            display: flex;
+            gap: 28px;
+            flex-wrap: wrap;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-swatch {
+            width: 32px;
+            height: 10px;
+            border-radius: 2px;
+        }
+
+        /* --- Traditional section --- */
+        .traditional-wrapper {
+            margin: 48px 48px 80px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border);
+        }
+
+        .traditional-wrapper h2 {
+            font-family: 'Source Serif 4', Georgia, serif;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .traditional-wrapper .section-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        #traditional-section {
+            max-width: 640px;
+            font-family: 'Source Serif 4', Georgia, serif;
+            font-size: 17px;
+            line-height: 1.65;
+            color: var(--text);
+        }
+
+        #traditional-section p {
+            margin-bottom: 1em;
+        }
+
+        #traditional-section mark {
+            background: #FDD835;
+        }
+
+        /* Marker highlight canvases */
+        .highlight {
+            position: absolute;
+            overflow: hidden;
+            background-color: transparent;
+        }
+
+        /* --- Footer --- */
+        .page-footer {
+            padding: 20px 48px;
+            border-top: 1px solid var(--border);
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        /* --- Responsive --- */
+        @media (max-width: 900px) {
+            .page-header, .metrics-bar, .section-label,
+            .legend, .traditional-wrapper, .page-footer {
+                padding-left: 24px;
+                padding-right: 24px;
+            }
+            #pretext-container, .traditional-wrapper {
+                margin-left: 24px;
+                margin-right: 24px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .page-header, .metrics-bar, .section-label,
+            .legend, .traditional-wrapper, .page-footer {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+            #pretext-container, .traditional-wrapper {
+                margin-left: 16px;
+                margin-right: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="page-header">
+        <div>
+            <h1>Pretext <span>+</span> MarkerHighlight</h1>
+        </div>
+        <p class="header-subtitle">
+            Arithmetic text layout via
+            <a href="https://github.com/chenglou/pretext" style="color: var(--accent); text-decoration: none;">pretext</a>
+            — zero DOM reflow on resize. Four highlight styles flowing across three columns with SVG obstacles.
+        </p>
+    </header>
+
+    <div class="metrics-bar" id="metrics">
+        <span>Loading…</span>
+    </div>
+
+    <div class="section-label">Pretext-powered layout — 3 columns, 4 highlight styles</div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-swatch" style="background: #FDD835;"></div>
+            <span>Highlight (marker pen)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch" style="background: #EF5350; border-radius: 50%;"></div>
+            <span>Circle (hand-drawn)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch" style="background: #66BB6A; height: 6px; border-radius: 0;"></div>
+            <span>Scribble</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-swatch" style="background: transparent; border: 2px solid #42A5F5; height: 10px;"></div>
+            <span>Sketchout (rectangle)</span>
+        </div>
+    </div>
+
+    <div id="pretext-container"></div>
+
+    <!-- Traditional DOM-based section for comparison -->
+    <div class="traditional-wrapper">
+        <h2>Traditional DOM-based highlighting</h2>
+        <p class="section-desc">
+            The original MarkerHighlighter works on existing HTML with &lt;mark&gt; tags — no pretext needed.
+            Both approaches coexist in the same library.
+        </p>
+        <div id="traditional-section">
+            <p>
+                The standard <mark>MarkerHighlighter</mark> scans for <code>&lt;mark&gt;</code> elements in the DOM
+                and overlays canvas-drawn highlights at the positions returned by <mark>getClientRects()</mark>.
+                This is the simplest way to add animated highlighting to any webpage — just wrap text in
+                <code>&lt;mark&gt;</code> tags and initialize the library.
+            </p>
+            <p>
+                It works beautifully for <mark data-drawing-mode="highlight" data-animation-speed="2000">most use cases where text is already in the page</mark>.
+                The pretext-powered approach above is for scenarios where you need
+                <mark data-drawing-mode="highlight" data-highlight='{"amplitude":0.3,"wavelength":3}'>maximum layout performance</mark>
+                — multi-column layouts, text flowing around obstacles, or real-time resize without jank.
+            </p>
+        </div>
+    </div>
+
+    <footer class="page-footer">
+        <span>MarkerHighlight.js — canvas-drawn text highlighting</span>
+        <span>Built by <a href="https://solarise.dev">solarise.dev</a></span>
+    </footer>
+
+    <script type="module" src="./dist/pretext-demo.min.js"></script>
+</body>
+</html>

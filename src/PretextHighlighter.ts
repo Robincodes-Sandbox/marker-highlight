@@ -1,0 +1,751 @@
+import {
+  prepareWithSegments,
+  layoutNextLine,
+  type LayoutCursor,
+  type PreparedTextWithSegments,
+} from '@chenglou/pretext'
+import { OptionsValidator } from './Options'
+import { Color } from './Color'
+import RendererFactory from './renderers/RendererFactory'
+import type { DrawResult } from './renderers/Renderer'
+
+// --- Public types ---
+
+export interface PretextMark {
+  /** Text phrase to highlight (matched in rendered lines) */
+  phrase: string
+  /** Highlight color (hex or rgb) */
+  color?: string
+  /** Drawing mode override for this mark */
+  drawingMode?: string
+  /** Style name (defined via defineStyle) */
+  style?: string
+  /** Any additional per-mark highlight options */
+  options?: Record<string, any>
+}
+
+export interface PretextObstacle {
+  x: number
+  y: number
+  width: number
+  height: number
+  margin?: number
+}
+
+export interface PretextHighlighterOptions {
+  font: string
+  lineHeight: number
+  /** Container padding in px (renamed to avoid conflict with highlight padding) */
+  containerPadding?: number
+  columns?: number
+  columnGap?: number
+  paragraphGap?: number
+  /** Content: array of paragraph strings */
+  paragraphs?: string[]
+  /** Marks to apply to the content */
+  marks?: PretextMark[]
+  /** Obstacles that text flows around */
+  obstacles?: PretextObstacle[]
+  /** Callback when layout changes (with performance metrics) */
+  onLayout?: (metrics: PretextMetrics) => void
+  // Standard highlight options (defaults for all marks)
+  animate?: boolean
+  animationSpeed?: number
+  animationTrigger?: string
+  height?: number
+  offset?: number
+  padding?: number
+  drawingMode?: string
+  highlight?: any
+  circle?: any
+  burst?: any
+  debug?: boolean
+  multiLineDelay?: number
+  delay?: number
+  easing?: string
+  skewX?: number
+  skewY?: number
+  [key: string]: any
+}
+
+export interface PretextMetrics {
+  prepareMs: number
+  layoutMs: number
+  renderMs: number
+  lineCount: number
+  paragraphCount: number
+}
+
+// --- Internal types ---
+
+interface PlacedLine {
+  x: number
+  y: number
+  text: string
+  width: number
+  paragraphIndex: number
+  charStart: number
+  charEnd: number
+}
+
+interface HighlightSegment {
+  x: number
+  y: number
+  width: number
+  height: number
+  markIndex: number
+  isFirst: boolean
+  isLast: boolean
+}
+
+/**
+ * Duck-typed rect model compatible with the renderer system.
+ * Replaces DOMRect + RectModel for pretext-computed positions.
+ */
+class VirtualRect {
+  rect: {
+    x: number; y: number; width: number; height: number
+    top: number; left: number; right: number; bottom: number
+  }
+  private _startsWithin: boolean
+  private _terminatesWithin: boolean
+
+  constructor(
+    x: number, y: number, width: number, height: number,
+    startsWithin: boolean = false, terminatesWithin: boolean = false,
+  ) {
+    this.rect = {
+      x, y, width, height,
+      top: y, left: x,
+      right: x + width, bottom: y + height,
+    }
+    this._startsWithin = startsWithin
+    this._terminatesWithin = terminatesWithin
+  }
+
+  isStartingWithinText(): boolean { return this._startsWithin }
+  isTerminatingWithinText(): boolean { return this._terminatesWithin }
+}
+
+
+// --- Main class ---
+
+export class PretextHighlighter {
+  private container: HTMLElement
+  private stage: HTMLElement
+  private font: string
+  private lineHeight: number
+  private containerPadding: number
+  private columns: number
+  private columnGap: number
+  private paragraphGap: number
+  private options: Record<string, any>
+  private validator: OptionsValidator
+  private onLayoutCallback: ((m: PretextMetrics) => void) | null
+
+  // Content
+  private paragraphTexts: string[] = []
+  private markDefs: PretextMark[] = []
+  private obstacles: PretextObstacle[] = []
+
+  // Prepared pretext data (cached — only recomputed when content/font changes)
+  private prepared: PreparedTextWithSegments[] = []
+  private prepareTimeMs: number = 0
+
+  // Layout results
+  private lines: PlacedLine[] = []
+  private highlightSegments: HighlightSegment[] = []
+
+  // DOM pools
+  private linePool: HTMLDivElement[] = []
+  private highlightPool: HTMLDivElement[] = []
+
+  // Animation
+  private renderers: any[] = []
+  private animationFrameIds: number[] = []
+  private observer: IntersectionObserver | null = null
+
+  // Canvas for measuring mark offsets within lines
+  private measureCtx: CanvasRenderingContext2D
+
+  // Resize
+  private resizeRafId: number | null = null
+  private lastContainerWidth: number = 0
+
+  // Named styles (shared with MarkerHighlighter)
+  private static styles: Record<string, Record<string, any>> = {}
+
+  constructor(container: HTMLElement, options: PretextHighlighterOptions) {
+    this.container = container
+    this.font = options.font
+    this.lineHeight = options.lineHeight
+    this.containerPadding = options.containerPadding ?? 0
+    this.columns = options.columns ?? 1
+    this.columnGap = options.columnGap ?? 24
+    this.paragraphGap = options.paragraphGap ?? Math.round(options.lineHeight * 0.6)
+    this.onLayoutCallback = options.onLayout ?? null
+    this.validator = new OptionsValidator()
+
+    // Validate highlight defaults (strip pretext-specific options)
+    const highlightDefaults = { ...options }
+    delete highlightDefaults.font
+    delete highlightDefaults.lineHeight
+    delete highlightDefaults.containerPadding
+    delete highlightDefaults.paragraphs
+    delete highlightDefaults.marks
+    delete highlightDefaults.obstacles
+    delete highlightDefaults.onLayout
+    delete highlightDefaults.columns
+    delete highlightDefaults.columnGap
+    delete highlightDefaults.paragraphGap
+    this.options = this.validator.validate(highlightDefaults)
+
+    // Stage element (absolute-positioned children go here)
+    this.stage = document.createElement('div')
+    this.stage.className = 'pretext-stage'
+    this.stage.style.position = 'relative'
+    container.appendChild(this.stage)
+
+    // Measurement canvas
+    const mc = document.createElement('canvas')
+    this.measureCtx = mc.getContext('2d')!
+    this.measureCtx.font = this.font
+
+    // Content
+    if (options.paragraphs) this.paragraphTexts = options.paragraphs
+    if (options.marks) this.markDefs = options.marks
+    if (options.obstacles) this.obstacles = options.obstacles
+
+    // Intersection observer
+    if (this.options.animationTrigger === 'scrollIntoView') {
+      this.observer = new IntersectionObserver(
+        entries => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue
+            const idx = parseInt((entry.target as HTMLElement).dataset.segIdx || '0')
+            this.startAnimation(idx, false)
+            this.observer?.unobserve(entry.target)
+          }
+        },
+        { threshold: 0.5 },
+      )
+    }
+
+    // Prepare + initial render
+    this.prepareText()
+    this.relayout()
+
+    // Resize listener
+    window.addEventListener('resize', this.handleResize)
+  }
+
+  // --- Static style registry ---
+
+  static defineStyle(name: string, options: Record<string, any>) {
+    PretextHighlighter.styles[name] = options
+  }
+
+  static getStyle(name: string): Record<string, any> {
+    return PretextHighlighter.styles[name] || {}
+  }
+
+  // --- Public API ---
+
+  setContent(paragraphs: string[], marks?: PretextMark[]) {
+    this.paragraphTexts = paragraphs
+    if (marks) this.markDefs = marks
+    this.prepareText()
+    this.relayout()
+  }
+
+  setMarks(marks: PretextMark[]) {
+    this.markDefs = marks
+    this.relayout()
+  }
+
+  setObstacles(obstacles: PretextObstacle[]) {
+    this.obstacles = obstacles
+    this.relayout()
+  }
+
+  refresh() {
+    this.relayout()
+  }
+
+  destroy() {
+    window.removeEventListener('resize', this.handleResize)
+    this.stopAllAnimations()
+    this.observer?.disconnect()
+    this.stage.remove()
+  }
+
+  get metrics(): PretextMetrics {
+    return {
+      prepareMs: this.prepareTimeMs,
+      layoutMs: 0, // set during relayout
+      renderMs: 0,
+      lineCount: this.lines.length,
+      paragraphCount: this.paragraphTexts.length,
+    }
+  }
+
+  // --- Text preparation (expensive, cached) ---
+
+  private prepareText() {
+    const t0 = performance.now()
+    this.prepared = this.paragraphTexts.map(text =>
+      prepareWithSegments(text, this.font),
+    )
+    this.prepareTimeMs = performance.now() - t0
+  }
+
+  // --- Layout (fast arithmetic, re-run on resize) ---
+
+  private relayout() {
+    const t0 = performance.now()
+
+    const containerWidth = this.container.clientWidth - 2 * this.containerPadding
+    const columnWidth = this.columns > 1
+      ? (containerWidth - (this.columns - 1) * this.columnGap) / this.columns
+      : containerWidth
+
+    this.lines = []
+    let currentCol = 0
+    let y = 0
+    const columnMaxY = this.container.dataset.columnHeight
+      ? parseInt(this.container.dataset.columnHeight)
+      : Infinity
+
+    for (let pi = 0; pi < this.prepared.length; pi++) {
+      const prepared = this.prepared[pi]
+      const paraText = this.paragraphTexts[pi]
+      let cursor: LayoutCursor = { segmentIndex: 0, graphemeIndex: 0 }
+      let charOffset = 0
+
+      for (;;) {
+        // Column overflow
+        if (y >= columnMaxY && currentCol < this.columns - 1) {
+          currentCol++
+          y = 0
+        }
+
+        const colX = this.containerPadding + currentCol * (columnWidth + this.columnGap)
+        const slot = this.getLineSlot(colX, y, columnWidth)
+
+        const line = layoutNextLine(prepared, cursor, slot.width)
+        if (line === null) break
+
+        const lineCharStart = charOffset
+        const lineCharEnd = charOffset + line.text.length
+
+        this.lines.push({
+          x: slot.x,
+          y,
+          text: line.text,
+          width: line.width,
+          paragraphIndex: pi,
+          charStart: lineCharStart,
+          charEnd: lineCharEnd,
+        })
+
+        // Advance char offset past line text + any whitespace consumed at break
+        charOffset = lineCharEnd
+        while (charOffset < paraText.length && /\s/.test(paraText[charOffset])) {
+          charOffset++
+        }
+
+        cursor = line.end
+        y += this.lineHeight
+      }
+
+      y += this.paragraphGap
+    }
+
+    const layoutMs = performance.now() - t0
+
+    // Compute highlight segments
+    this.computeHighlightSegments()
+
+    // Render
+    const t1 = performance.now()
+    this.render()
+    const renderMs = performance.now() - t1
+
+    // Report metrics
+    if (this.onLayoutCallback) {
+      this.onLayoutCallback({
+        prepareMs: this.prepareTimeMs,
+        layoutMs,
+        renderMs,
+        lineCount: this.lines.length,
+        paragraphCount: this.paragraphTexts.length,
+      })
+    }
+  }
+
+  // --- Obstacle-aware line slot ---
+
+  private getLineSlot(
+    colX: number, lineY: number, colWidth: number,
+  ): { x: number; width: number } {
+    let left = colX
+    let right = colX + colWidth
+
+    for (const obs of this.obstacles) {
+      const m = obs.margin ?? 0
+      const oTop = obs.y - m
+      const oBottom = obs.y + obs.height + m
+      if (lineY + this.lineHeight <= oTop || lineY >= oBottom) continue
+
+      const oLeft = obs.x - m
+      const oRight = obs.x + obs.width + m
+
+      // Obstacle overlaps this line vertically
+      if (oLeft <= left && oRight >= right) {
+        // Obstacle covers entire width — skip below
+        continue
+      }
+      if (oLeft <= left) {
+        left = Math.max(left, oRight)
+      } else if (oRight >= right) {
+        right = Math.min(right, oLeft)
+      } else {
+        // Obstacle in middle — take the wider side
+        const leftSpace = oLeft - left
+        const rightSpace = right - oRight
+        if (leftSpace >= rightSpace) {
+          right = oLeft
+        } else {
+          left = oRight
+        }
+      }
+    }
+
+    const width = right - left
+    if (width < 60) return { x: colX, width: colWidth } // fallback if too narrow
+    return { x: left, width }
+  }
+
+  // --- Map marks to line positions ---
+
+  private computeHighlightSegments() {
+    this.highlightSegments = []
+
+    for (let mi = 0; mi < this.markDefs.length; mi++) {
+      const mark = this.markDefs[mi]
+      const segments: HighlightSegment[] = []
+
+      for (const line of this.lines) {
+        // Find phrase in this line's text
+        const idx = line.text.indexOf(mark.phrase)
+        if (idx === -1) {
+          // Check for partial matches (mark spans across lines)
+          // Start of mark: line ends with the beginning of the phrase
+          // End of mark: line starts with the end of the phrase
+          this.checkPartialMatch(mark, line, mi, segments)
+          continue
+        }
+
+        // Full match within this line
+        const beforeText = line.text.substring(0, idx)
+        const xOffset = this.measureCtx.measureText(beforeText).width
+        const markWidth = this.measureCtx.measureText(mark.phrase).width
+
+        segments.push({
+          x: line.x + xOffset,
+          y: line.y,
+          width: markWidth,
+          height: this.lineHeight,
+          markIndex: mi,
+          isFirst: true,
+          isLast: true,
+        })
+      }
+
+      // If phrase wraps across lines, use character-offset based detection
+      if (segments.length === 0) {
+        this.findMarkByCharOffset(mark, mi, segments)
+      }
+
+      this.highlightSegments.push(...segments)
+    }
+  }
+
+  private checkPartialMatch(
+    mark: PretextMark, line: PlacedLine, markIndex: number,
+    segments: HighlightSegment[],
+  ) {
+    // Check if line ends with the start of the phrase
+    for (let len = 1; len < mark.phrase.length; len++) {
+      const prefix = mark.phrase.substring(0, len)
+      if (line.text.endsWith(prefix)) {
+        const beforeText = line.text.substring(0, line.text.length - len)
+        const xOffset = this.measureCtx.measureText(beforeText).width
+        const markWidth = this.measureCtx.measureText(prefix).width
+
+        segments.push({
+          x: line.x + xOffset,
+          y: line.y,
+          width: markWidth,
+          height: this.lineHeight,
+          markIndex,
+          isFirst: true,
+          isLast: false,
+        })
+        return
+      }
+    }
+
+    // Check if line starts with the end of the phrase
+    for (let len = 1; len < mark.phrase.length; len++) {
+      const suffix = mark.phrase.substring(mark.phrase.length - len)
+      if (line.text.startsWith(suffix)) {
+        const markWidth = this.measureCtx.measureText(suffix).width
+
+        segments.push({
+          x: line.x,
+          y: line.y,
+          width: markWidth,
+          height: this.lineHeight,
+          markIndex,
+          isFirst: false,
+          isLast: true,
+        })
+        return
+      }
+    }
+
+    // Check if line is entirely within the phrase (middle lines)
+    if (mark.phrase.includes(line.text.trim()) && line.text.trim().length > 3) {
+      // Verify it's actually a middle segment by checking adjacent lines
+      const markWidth = this.measureCtx.measureText(line.text).width
+      segments.push({
+        x: line.x,
+        y: line.y,
+        width: markWidth,
+        height: this.lineHeight,
+        markIndex,
+        isFirst: false,
+        isLast: false,
+      })
+    }
+  }
+
+  private findMarkByCharOffset(
+    mark: PretextMark, markIndex: number,
+    segments: HighlightSegment[],
+  ) {
+    // Build a running text from all lines in each paragraph to find phrase position
+    const byPara = new Map<number, PlacedLine[]>()
+    for (const line of this.lines) {
+      let arr = byPara.get(line.paragraphIndex)
+      if (!arr) { arr = []; byPara.set(line.paragraphIndex, arr) }
+      arr.push(line)
+    }
+
+    for (const [_pi, paraLines] of byPara) {
+      const fullText = paraLines.map(l => l.text).join(' ')
+      const phraseIdx = fullText.indexOf(mark.phrase)
+      if (phraseIdx === -1) continue
+
+      const phraseEnd = phraseIdx + mark.phrase.length
+
+      // Map character positions back to lines
+      let charPos = 0
+      for (let li = 0; li < paraLines.length; li++) {
+        const line = paraLines[li]
+        const lineStart = charPos
+        const lineEnd = charPos + line.text.length
+
+        // Check intersection
+        if (phraseEnd <= lineStart || phraseIdx >= lineEnd) {
+          charPos = lineEnd + 1 // +1 for the join space
+          continue
+        }
+
+        const segStart = Math.max(0, phraseIdx - lineStart)
+        const segEnd = Math.min(line.text.length, phraseEnd - lineStart)
+        const segText = line.text.substring(segStart, segEnd)
+        const beforeText = line.text.substring(0, segStart)
+
+        const xOffset = this.measureCtx.measureText(beforeText).width
+        const markWidth = this.measureCtx.measureText(segText).width
+
+        segments.push({
+          x: line.x + xOffset,
+          y: line.y,
+          width: markWidth,
+          height: this.lineHeight,
+          markIndex,
+          isFirst: phraseIdx >= lineStart,
+          isLast: phraseEnd <= lineEnd,
+        })
+
+        charPos = lineEnd + 1
+      }
+    }
+  }
+
+  // --- Rendering ---
+
+  private render() {
+    // Stop running animations
+    this.stopAllAnimations()
+
+    // Sync line pool
+    this.syncLinePool(this.lines.length)
+    for (let i = 0; i < this.lines.length; i++) {
+      const el = this.linePool[i]
+      const line = this.lines[i]
+      el.style.left = `${line.x}px`
+      el.style.top = `${line.y}px`
+      el.style.font = this.font
+      el.style.lineHeight = `${this.lineHeight}px`
+      el.textContent = line.text
+    }
+
+    // Set stage height
+    const lastLine = this.lines[this.lines.length - 1]
+    if (lastLine) {
+      this.stage.style.height = `${lastLine.y + this.lineHeight + 40}px`
+    }
+
+    // Remove old highlights
+    for (const el of this.highlightPool) el.remove()
+    this.highlightPool = []
+    this.renderers = []
+    this.animationFrameIds = []
+
+    // Create highlights
+    for (let si = 0; si < this.highlightSegments.length; si++) {
+      const seg = this.highlightSegments[si]
+      const mark = this.markDefs[seg.markIndex]
+
+      // Merge options: defaults → style → per-mark
+      const styleOpts = mark.style ? PretextHighlighter.getStyle(mark.style) : {}
+      const markOpts = mark.options || {}
+      const merged = this.validator.validate({
+        ...this.options,
+        ...styleOpts,
+        ...markOpts,
+        ...(mark.drawingMode ? { drawingMode: mark.drawingMode } : {}),
+      })
+
+      const color = new Color(mark.color || '#FDD835')
+      const skipAnimation = merged.animate === false
+      const virtualRect = new VirtualRect(
+        seg.x, seg.y, seg.width, seg.height,
+        !seg.isFirst, !seg.isLast,
+      )
+
+      try {
+        const renderer = RendererFactory.getRenderer({
+          mode: merged.drawingMode,
+          options: merged,
+          color,
+          rect: virtualRect as any,
+        })
+
+        this.renderers.push(renderer)
+
+        const bounds: DrawResult = renderer.setBounds()
+        const highlightDiv = document.createElement('div')
+        highlightDiv.className = 'highlight pretext-highlight'
+        highlightDiv.dataset.segIdx = String(si)
+        highlightDiv.appendChild(bounds.canvas)
+
+        const positionOffset = merged.offset * seg.height / 2
+        let hv = bounds.verticalOffset + seg.height * 0.1
+
+        highlightDiv.style.position = 'absolute'
+        highlightDiv.style.top = `${seg.y - hv + positionOffset}px`
+        highlightDiv.style.left = `${seg.x - bounds.horizontalPadding}px`
+        highlightDiv.style.width = `${seg.width + 2 * bounds.horizontalPadding}px`
+        highlightDiv.style.height = `${Math.max(seg.height, bounds.height)}px`
+        highlightDiv.style.pointerEvents = 'none'
+        highlightDiv.style.zIndex = '1'
+
+        if (merged.skewX || merged.skewY) {
+          const sx = (merged.skewX || 0) * seg.height
+          const sy = (merged.skewY || 0) * seg.height
+          highlightDiv.style.transform = `skew(${sx}deg, ${sy}deg)`
+          highlightDiv.style.transformOrigin = 'center'
+        }
+
+        if (this.options.debug) {
+          highlightDiv.style.border = '1px dashed red'
+        }
+
+        this.stage.appendChild(highlightDiv)
+        this.highlightPool.push(highlightDiv)
+
+        // Animation
+        if (merged.animationTrigger === 'scrollIntoView') {
+          this.observer?.observe(highlightDiv)
+        } else {
+          const delay = (merged.delay || 0) + (merged.multiLineDelay || 0) * si * merged.animationSpeed
+          setTimeout(() => this.startAnimation(si, skipAnimation), delay)
+        }
+
+      } catch (e) {
+        console.error('PretextHighlighter: renderer error', e)
+      }
+    }
+  }
+
+  private startAnimation(segmentIndex: number, skip: boolean) {
+    const renderer = this.renderers[segmentIndex]
+    if (!renderer) return
+
+    renderer.startAnimation(skip)
+
+    if (!skip) {
+      const animate = (ts: number) => {
+        if (renderer.animate(ts)) {
+          this.animationFrameIds[segmentIndex] = requestAnimationFrame(animate)
+        } else {
+          this.animationFrameIds[segmentIndex] = 0
+        }
+      }
+      this.animationFrameIds[segmentIndex] = requestAnimationFrame(animate)
+    }
+  }
+
+  private stopAllAnimations() {
+    for (const id of this.animationFrameIds) {
+      if (id) cancelAnimationFrame(id)
+    }
+    this.animationFrameIds = []
+  }
+
+  // --- Line pool management ---
+
+  private syncLinePool(count: number) {
+    while (this.linePool.length < count) {
+      const el = document.createElement('div')
+      el.className = 'pretext-line'
+      el.style.position = 'absolute'
+      el.style.whiteSpace = 'pre'
+      el.style.zIndex = '3'
+      this.stage.appendChild(el)
+      this.linePool.push(el)
+    }
+    for (let i = 0; i < this.linePool.length; i++) {
+      this.linePool[i].style.display = i < count ? '' : 'none'
+    }
+  }
+
+  // --- Resize ---
+
+  private handleResize = () => {
+    const w = this.container.clientWidth
+    if (w === this.lastContainerWidth) return
+    this.lastContainerWidth = w
+
+    if (this.resizeRafId) cancelAnimationFrame(this.resizeRafId)
+    this.resizeRafId = requestAnimationFrame(() => {
+      this.relayout()
+      this.resizeRafId = null
+    })
+  }
+}
