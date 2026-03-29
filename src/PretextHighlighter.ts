@@ -309,56 +309,12 @@ export class PretextHighlighter {
       ? (containerWidth - (this.columns - 1) * this.columnGap) / this.columns
       : containerWidth
 
-    this.lines = []
-    let currentCol = 0
-    let y = 0
-    const columnMaxY = this.container.dataset.columnHeight
-      ? parseInt(this.container.dataset.columnHeight)
-      : Infinity
-
-    for (let pi = 0; pi < this.prepared.length; pi++) {
-      const prepared = this.prepared[pi]
-      const paraText = this.paragraphTexts[pi]
-      let cursor: LayoutCursor = { segmentIndex: 0, graphemeIndex: 0 }
-      let charOffset = 0
-
-      for (;;) {
-        // Column overflow
-        if (y >= columnMaxY && currentCol < this.columns - 1) {
-          currentCol++
-          y = 0
-        }
-
-        const colX = this.containerPadding + currentCol * (columnWidth + this.columnGap)
-        const slot = this.getLineSlot(colX, y, columnWidth)
-
-        const line = layoutNextLine(prepared, cursor, slot.width)
-        if (line === null) break
-
-        const lineCharStart = charOffset
-        const lineCharEnd = charOffset + line.text.length
-
-        this.lines.push({
-          x: slot.x,
-          y,
-          text: line.text,
-          width: line.width,
-          paragraphIndex: pi,
-          charStart: lineCharStart,
-          charEnd: lineCharEnd,
-        })
-
-        // Advance char offset past line text + any whitespace consumed at break
-        charOffset = lineCharEnd
-        while (charOffset < paraText.length && /\s/.test(paraText[charOffset])) {
-          charOffset++
-        }
-
-        cursor = line.end
-        y += this.lineHeight
-      }
-
-      y += this.paragraphGap
+    // Two-pass layout for multi-column: first pass to estimate total height,
+    // second pass with the column height target.
+    if (this.columns > 1) {
+      this.lines = this.layoutColumns(columnWidth, containerWidth)
+    } else {
+      this.lines = this.layoutSingleColumn(columnWidth)
     }
 
     const layoutMs = performance.now() - t0
@@ -381,6 +337,121 @@ export class PretextHighlighter {
         paragraphCount: this.paragraphTexts.length,
       })
     }
+  }
+
+  // --- Single-column layout ---
+
+  private layoutSingleColumn(columnWidth: number): PlacedLine[] {
+    const lines: PlacedLine[] = []
+    let y = 0
+
+    for (let pi = 0; pi < this.prepared.length; pi++) {
+      const prepared = this.prepared[pi]
+      const paraText = this.paragraphTexts[pi]
+      let cursor: LayoutCursor = { segmentIndex: 0, graphemeIndex: 0 }
+      let charOffset = 0
+
+      for (;;) {
+        const colX = this.containerPadding
+        const slot = this.getLineSlot(colX, y, columnWidth)
+        const line = layoutNextLine(prepared, cursor, slot.width)
+        if (line === null) break
+
+        lines.push({
+          x: slot.x, y,
+          text: line.text, width: line.width,
+          paragraphIndex: pi,
+          charStart: charOffset, charEnd: charOffset + line.text.length,
+        })
+
+        charOffset += line.text.length
+        while (charOffset < paraText.length && /\s/.test(paraText[charOffset])) charOffset++
+        cursor = line.end
+        y += this.lineHeight
+      }
+      y += this.paragraphGap
+    }
+    return lines
+  }
+
+  // --- Multi-column layout ---
+
+  private layoutColumns(columnWidth: number, containerWidth: number): PlacedLine[] {
+    // First pass: lay out everything in a single column to estimate total height
+    const singlePass = this.layoutSingleColumnRaw(columnWidth)
+    const totalHeight = singlePass.length > 0
+      ? singlePass[singlePass.length - 1].y + this.lineHeight + this.paragraphGap
+      : 0
+
+    // Target column height (with some padding to avoid orphans)
+    const targetColHeight = Math.ceil(totalHeight / this.columns) + this.lineHeight * 2
+
+    // Second pass: flow text across columns
+    const lines: PlacedLine[] = []
+    let currentCol = 0
+    let y = 0
+
+    for (let pi = 0; pi < this.prepared.length; pi++) {
+      const prepared = this.prepared[pi]
+      const paraText = this.paragraphTexts[pi]
+      let cursor: LayoutCursor = { segmentIndex: 0, graphemeIndex: 0 }
+      let charOffset = 0
+
+      for (;;) {
+        // Column overflow
+        if (y >= targetColHeight && currentCol < this.columns - 1) {
+          currentCol++
+          y = 0
+        }
+
+        const colX = this.containerPadding + currentCol * (columnWidth + this.columnGap)
+        const slot = this.getLineSlot(colX, y, columnWidth)
+        const line = layoutNextLine(prepared, cursor, slot.width)
+        if (line === null) break
+
+        lines.push({
+          x: slot.x, y,
+          text: line.text, width: line.width,
+          paragraphIndex: pi,
+          charStart: charOffset, charEnd: charOffset + line.text.length,
+        })
+
+        charOffset += line.text.length
+        while (charOffset < paraText.length && /\s/.test(paraText[charOffset])) charOffset++
+        cursor = line.end
+        y += this.lineHeight
+      }
+      y += this.paragraphGap
+    }
+    return lines
+  }
+
+  /** Raw single-column layout without obstacles (for height estimation) */
+  private layoutSingleColumnRaw(columnWidth: number): PlacedLine[] {
+    const lines: PlacedLine[] = []
+    let y = 0
+    for (let pi = 0; pi < this.prepared.length; pi++) {
+      const prepared = this.prepared[pi]
+      const paraText = this.paragraphTexts[pi]
+      let cursor: LayoutCursor = { segmentIndex: 0, graphemeIndex: 0 }
+      let charOffset = 0
+      for (;;) {
+        const line = layoutNextLine(prepared, cursor, columnWidth)
+        if (line === null) break
+        lines.push({
+          x: 0, y,
+          text: line.text, width: line.width,
+          paragraphIndex: pi,
+          charStart: charOffset, charEnd: charOffset + line.text.length,
+        })
+        charOffset += line.text.length
+        while (charOffset < paraText.length && /\s/.test(paraText[charOffset])) charOffset++
+        cursor = line.end
+        y += this.lineHeight
+      }
+      y += this.paragraphGap
+    }
+    return lines
   }
 
   // --- Obstacle-aware line slot ---
@@ -475,8 +546,8 @@ export class PretextHighlighter {
     mark: PretextMark, line: PlacedLine, markIndex: number,
     segments: HighlightSegment[],
   ) {
-    // Check if line ends with the start of the phrase
-    for (let len = 1; len < mark.phrase.length; len++) {
+    // Check if line ends with the start of the phrase (min 4 chars to avoid false positives)
+    for (let len = Math.min(4, mark.phrase.length); len < mark.phrase.length; len++) {
       const prefix = mark.phrase.substring(0, len)
       if (line.text.endsWith(prefix)) {
         const beforeText = line.text.substring(0, line.text.length - len)
@@ -496,8 +567,8 @@ export class PretextHighlighter {
       }
     }
 
-    // Check if line starts with the end of the phrase
-    for (let len = 1; len < mark.phrase.length; len++) {
+    // Check if line starts with the end of the phrase (min 4 chars to avoid false positives)
+    for (let len = Math.min(4, mark.phrase.length); len < mark.phrase.length; len++) {
       const suffix = mark.phrase.substring(mark.phrase.length - len)
       if (line.text.startsWith(suffix)) {
         const markWidth = this.measureCtx.measureText(suffix).width

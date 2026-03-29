@@ -256,13 +256,13 @@ function initTraditionalSection() {
   const obstacles: PretextObstacle[] = []
   const shapeElements: HTMLElement[] = []
 
-  // First, estimate total content height for shape positioning
+  // Estimate height per column (total lines / 3 columns)
   const estimatedLineCount = PARAGRAPHS.reduce((acc, p) => acc + Math.ceil(p.length / 45), 0)
-  const estimatedHeight = estimatedLineCount * LINE_HEIGHT
+  const estimatedColumnHeight = Math.ceil(estimatedLineCount / 3) * LINE_HEIGHT
 
   for (const shape of SHAPES) {
     const colX = shape.column * (columnWidth + COL_GAP)
-    const shapeY = Math.round(shape.topFraction * estimatedHeight)
+    const shapeY = Math.round(shape.topFraction * estimatedColumnHeight)
 
     let shapeX: number
     if (shape.float === 'left') {
@@ -311,6 +311,7 @@ function initTraditionalSection() {
     animate: true,
     animationSpeed: 1800,
     animationTrigger: 'scrollIntoView',
+    padding: 0.12,
     height: 1,
     highlight: { amplitude: 0.2, wavelength: 4, roughEnds: 1.5 },
     onLayout: updateMetrics,
@@ -328,7 +329,7 @@ function initTraditionalSection() {
       for (let i = 0; i < SHAPES.length; i++) {
         const shape = SHAPES[i]
         const colX = shape.column * (newColWidth + COL_GAP)
-        const shapeY = Math.round(shape.topFraction * estimatedHeight)
+        const shapeY = Math.round(shape.topFraction * estimatedColumnHeight)
 
         let shapeX: number
         if (shape.float === 'left') {
