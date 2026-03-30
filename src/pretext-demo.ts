@@ -133,86 +133,109 @@ const MARKS: PretextMark[] = [
   },
 ]
 
+// --- Polygon helpers for contour-based text nestling ---
+function circlePolygon(cx: number, cy: number, r: number, n = 24): { x: number; y: number }[] {
+  return Array.from({ length: n }, (_, i) => {
+    const a = (i / n) * 2 * Math.PI
+    return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }
+  })
+}
+
+function rotatedRectPolygon(
+  cx: number, cy: number, w: number, h: number, angleDeg: number,
+): { x: number; y: number }[] {
+  const a = angleDeg * Math.PI / 180
+  const cos = Math.cos(a), sin = Math.sin(a)
+  const hw = w / 2, hh = h / 2
+  const corners: [number, number][] = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]]
+  return corners.map(([px, py]) => ({
+    x: cx + px * cos - py * sin,
+    y: cy + px * sin + py * cos,
+  }))
+}
+
+function ellipsePolygon(
+  cx: number, cy: number, rx: number, ry: number, angleDeg = 0, n = 24,
+): { x: number; y: number }[] {
+  const a = angleDeg * Math.PI / 180
+  const cosA = Math.cos(a), sinA = Math.sin(a)
+  return Array.from({ length: n }, (_, i) => {
+    const t = (i / n) * 2 * Math.PI
+    const px = rx * Math.cos(t), py = ry * Math.sin(t)
+    return { x: cx + px * cosA - py * sinA, y: cy + px * sinA + py * cosA }
+  })
+}
+
 // --- SVG shape definitions ---
 interface ShapeDef {
   id: string
   svg: string
   width: number
   height: number
-  column: number       // 0, 1, or 2
-  topFraction: number  // vertical position as fraction of column height
-  float: 'left' | 'right' | 'center'
+  xFraction: number    // horizontal center as fraction of container width
+  topFraction: number  // vertical center as fraction of estimated column height
+  rotation: number     // CSS rotation in degrees
+  contourType: 'circle' | 'rect' | 'ellipse'
 }
 
 const SHAPES: ShapeDef[] = [
   {
-    id: 'ring',
-    svg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    id: 'large-circle',
+    svg: `<svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#E53935" stop-opacity="0.14"/>
-          <stop offset="100%" stop-color="#FF8A65" stop-opacity="0.20"/>
-        </linearGradient>
+        <radialGradient id="circGrad" cx="40%" cy="40%">
+          <stop offset="0%" stop-color="#E53935" stop-opacity="0.18"/>
+          <stop offset="100%" stop-color="#FF8A65" stop-opacity="0.06"/>
+        </radialGradient>
       </defs>
-      <circle cx="50" cy="50" r="44" fill="none" stroke="url(#ringGrad)" stroke-width="10"/>
-      <circle cx="50" cy="50" r="30" fill="none" stroke="#E5393510" stroke-width="2" stroke-dasharray="6 5"/>
+      <circle cx="120" cy="120" r="110" fill="url(#circGrad)" stroke="#E5393512" stroke-width="3"/>
+      <circle cx="120" cy="120" r="80" fill="none" stroke="#E5393508" stroke-width="1.5" stroke-dasharray="8 6"/>
+      <circle cx="120" cy="120" r="45" fill="none" stroke="#E5393506" stroke-width="1"/>
     </svg>`,
-    width: 88,
-    height: 88,
-    column: 0,
-    topFraction: 0.10,
-    float: 'right',
+    width: 240,
+    height: 240,
+    xFraction: 0.31,
+    topFraction: 0.15,
+    rotation: 0,
+    contourType: 'circle',
   },
   {
-    id: 'diamond',
-    svg: `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg">
+    id: 'tilted-rect',
+    svg: `<svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="diaGrad" x1="0" y1="0" x2="0.5" y2="1">
-          <stop offset="0%" stop-color="#1E88E5" stop-opacity="0.12"/>
-          <stop offset="100%" stop-color="#7C4DFF" stop-opacity="0.18"/>
+        <linearGradient id="rectGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#1E88E5" stop-opacity="0.14"/>
+          <stop offset="100%" stop-color="#7C4DFF" stop-opacity="0.08"/>
         </linearGradient>
       </defs>
-      <polygon points="50,6 96,60 50,114 4,60" fill="url(#diaGrad)" stroke="#1E88E510" stroke-width="2"/>
-      <polygon points="50,24 78,60 50,96 22,60" fill="none" stroke="#7C4DFF0C" stroke-width="1.5"/>
+      <rect x="10" y="10" width="220" height="180" rx="12" fill="url(#rectGrad)" stroke="#1E88E510" stroke-width="2"/>
+      <rect x="40" y="40" width="160" height="120" rx="8" fill="none" stroke="#7C4DFF08" stroke-width="1.5"/>
     </svg>`,
-    width: 88,
-    height: 105,
-    column: 1,
+    width: 240,
+    height: 200,
+    xFraction: 0.67,
     topFraction: 0.42,
-    float: 'right',
+    rotation: 15,
+    contourType: 'rect',
   },
   {
-    id: 'wave',
-    svg: `<svg viewBox="0 0 140 80" xmlns="http://www.w3.org/2000/svg">
+    id: 'rotated-ellipse',
+    svg: `<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="waveGrad" x1="0" y1="0" x2="1" y2="0.5">
-          <stop offset="0%" stop-color="#43A047" stop-opacity="0.12"/>
-          <stop offset="100%" stop-color="#00897B" stop-opacity="0.16"/>
-        </linearGradient>
+        <radialGradient id="ellGrad" cx="45%" cy="45%">
+          <stop offset="0%" stop-color="#43A047" stop-opacity="0.16"/>
+          <stop offset="100%" stop-color="#00897B" stop-opacity="0.05"/>
+        </radialGradient>
       </defs>
-      <path d="M8,40 Q38,10 70,40 T132,40" fill="none" stroke="url(#waveGrad)" stroke-width="20" stroke-linecap="round"/>
-      <path d="M14,52 Q44,30 76,52 T136,52" fill="none" stroke="#43A04708" stroke-width="6" stroke-linecap="round"/>
+      <ellipse cx="100" cy="60" rx="90" ry="52" fill="url(#ellGrad)" stroke="#43A04710" stroke-width="2.5"/>
+      <ellipse cx="100" cy="60" rx="58" ry="30" fill="none" stroke="#43A04708" stroke-width="1.5" stroke-dasharray="6 8"/>
     </svg>`,
-    width: 120,
-    height: 68,
-    column: 2,
-    topFraction: 0.20,
-    float: 'left',
-  },
-  {
-    id: 'dots',
-    svg: `<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="20" cy="20" r="14" fill="#FF980016"/>
-      <circle cx="58" cy="16" r="9" fill="#FF980012"/>
-      <circle cx="38" cy="52" r="16" fill="#FF98001A"/>
-      <circle cx="65" cy="58" r="8" fill="#FF980010"/>
-      <circle cx="16" cy="65" r="6" fill="#FF980014"/>
-    </svg>`,
-    width: 72,
-    height: 72,
-    column: 0,
-    topFraction: 0.62,
-    float: 'left',
+    width: 200,
+    height: 120,
+    xFraction: 0.34,
+    topFraction: 0.70,
+    rotation: -12,
+    contourType: 'ellipse',
   },
 ]
 
@@ -250,28 +273,19 @@ function initTraditionalSection() {
   if (!container) return
 
   const containerWidth = container.clientWidth
-  const columnWidth = (containerWidth - 2 * COL_GAP) / 3
 
   // Calculate obstacle positions from shape definitions
   const obstacles: PretextObstacle[] = []
   const shapeElements: HTMLElement[] = []
 
-  // Estimate height per column (total lines / 3 columns)
   const estimatedLineCount = PARAGRAPHS.reduce((acc, p) => acc + Math.ceil(p.length / 45), 0)
   const estimatedColumnHeight = Math.ceil(estimatedLineCount / 3) * LINE_HEIGHT
 
   for (const shape of SHAPES) {
-    const colX = shape.column * (columnWidth + COL_GAP)
-    const shapeY = Math.round(shape.topFraction * estimatedColumnHeight)
-
-    let shapeX: number
-    if (shape.float === 'left') {
-      shapeX = colX
-    } else if (shape.float === 'right') {
-      shapeX = colX + columnWidth - shape.width
-    } else {
-      shapeX = colX + (columnWidth - shape.width) / 2
-    }
+    const cx = shape.xFraction * containerWidth
+    const cy = shape.topFraction * estimatedColumnHeight
+    const shapeX = cx - shape.width / 2
+    const shapeY = cy - shape.height / 2
 
     // Create SVG element
     const wrapper = document.createElement('div')
@@ -285,9 +299,20 @@ function initTraditionalSection() {
       height: ${shape.height}px;
       pointer-events: none;
       z-index: 2;
+      ${shape.rotation ? `transform: rotate(${shape.rotation}deg); transform-origin: center center;` : ''}
     `
     container.appendChild(wrapper)
     shapeElements.push(wrapper)
+
+    // Generate polygon contour for text nestling
+    let polygon: { x: number; y: number }[]
+    if (shape.contourType === 'circle') {
+      polygon = circlePolygon(cx, cy, Math.min(shape.width, shape.height) / 2)
+    } else if (shape.contourType === 'rect') {
+      polygon = rotatedRectPolygon(cx, cy, shape.width, shape.height, shape.rotation)
+    } else {
+      polygon = ellipsePolygon(cx, cy, shape.width / 2, shape.height / 2, shape.rotation)
+    }
 
     obstacles.push({
       x: shapeX,
@@ -295,6 +320,7 @@ function initTraditionalSection() {
       width: shape.width,
       height: shape.height,
       margin: OBSTACLE_MARGIN,
+      polygon,
     })
   }
 
@@ -323,26 +349,27 @@ function initTraditionalSection() {
     if (resizeTimer) clearTimeout(resizeTimer)
     resizeTimer = setTimeout(() => {
       const newWidth = container.clientWidth
-      const newColWidth = (newWidth - 2 * COL_GAP) / 3
       const newObstacles: PretextObstacle[] = []
 
       for (let i = 0; i < SHAPES.length; i++) {
         const shape = SHAPES[i]
-        const colX = shape.column * (newColWidth + COL_GAP)
-        const shapeY = Math.round(shape.topFraction * estimatedColumnHeight)
-
-        let shapeX: number
-        if (shape.float === 'left') {
-          shapeX = colX
-        } else if (shape.float === 'right') {
-          shapeX = colX + newColWidth - shape.width
-        } else {
-          shapeX = colX + (newColWidth - shape.width) / 2
-        }
+        const cx = shape.xFraction * newWidth
+        const cy = shape.topFraction * estimatedColumnHeight
+        const shapeX = cx - shape.width / 2
+        const shapeY = cy - shape.height / 2
 
         const wrapper = shapeElements[i]
         wrapper.style.left = `${shapeX}px`
         wrapper.style.top = `${shapeY}px`
+
+        let polygon: { x: number; y: number }[]
+        if (shape.contourType === 'circle') {
+          polygon = circlePolygon(cx, cy, Math.min(shape.width, shape.height) / 2)
+        } else if (shape.contourType === 'rect') {
+          polygon = rotatedRectPolygon(cx, cy, shape.width, shape.height, shape.rotation)
+        } else {
+          polygon = ellipsePolygon(cx, cy, shape.width / 2, shape.height / 2, shape.rotation)
+        }
 
         newObstacles.push({
           x: shapeX,
@@ -350,6 +377,7 @@ function initTraditionalSection() {
           width: shape.width,
           height: shape.height,
           margin: OBSTACLE_MARGIN,
+          polygon,
         })
       }
 

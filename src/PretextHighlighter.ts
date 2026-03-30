@@ -30,6 +30,8 @@ export interface PretextObstacle {
   width: number
   height: number
   margin?: number
+  /** Convex polygon vertices for contour-based text nestling (absolute coordinates) */
+  polygon?: { x: number; y: number }[]
 }
 
 export interface PretextHighlighterOptions {
@@ -173,6 +175,9 @@ export class PretextHighlighter {
   private resizeRafId: number | null = null
   private lastContainerWidth: number = 0
 
+  // Track marks whose animation has been shown (persists across resize)
+  private shownMarks: Set<number> = new Set()
+
   // Named styles (shared with MarkerHighlighter)
   private static styles: Record<string, Record<string, any>> = {}
 
@@ -258,12 +263,14 @@ export class PretextHighlighter {
   setContent(paragraphs: string[], marks?: PretextMark[]) {
     this.paragraphTexts = paragraphs
     if (marks) this.markDefs = marks
+    this.shownMarks.clear()
     this.prepareText()
     this.relayout()
   }
 
   setMarks(marks: PretextMark[]) {
     this.markDefs = marks
+    this.shownMarks.clear()
     this.relayout()
   }
 
@@ -516,6 +523,24 @@ export class PretextHighlighter {
 
   // --- Obstacle-aware line slot ---
 
+  /** Scan-line intersection with a convex polygon at a given Y */
+  private getPolygonXRangeAtY(
+    polygon: { x: number; y: number }[], y: number,
+  ): { left: number; right: number } | null {
+    const intersections: number[] = []
+    const n = polygon.length
+    for (let i = 0; i < n; i++) {
+      const a = polygon[i]
+      const b = polygon[(i + 1) % n]
+      if ((a.y <= y && b.y > y) || (b.y <= y && a.y > y)) {
+        const t = (y - a.y) / (b.y - a.y)
+        intersections.push(a.x + t * (b.x - a.x))
+      }
+    }
+    if (intersections.length < 2) return null
+    return { left: Math.min(...intersections), right: Math.max(...intersections) }
+  }
+
   private getLineSlot(
     colX: number, lineY: number, colWidth: number,
   ): { x: number; width: number } {
@@ -524,37 +549,56 @@ export class PretextHighlighter {
 
     for (const obs of this.obstacles) {
       const m = obs.margin ?? 0
-      const oTop = obs.y - m
-      const oBottom = obs.y + obs.height + m
-      if (lineY + this.lineHeight <= oTop || lineY >= oBottom) continue
 
-      const oLeft = obs.x - m
-      const oRight = obs.x + obs.width + m
+      if (obs.polygon) {
+        // Polygon contour: compute actual X range at this line's Y
+        let polyLeft = Infinity, polyRight = -Infinity
+        for (const sy of [lineY, lineY + this.lineHeight * 0.5, lineY + this.lineHeight]) {
+          const range = this.getPolygonXRangeAtY(obs.polygon, sy)
+          if (range) {
+            polyLeft = Math.min(polyLeft, range.left)
+            polyRight = Math.max(polyRight, range.right)
+          }
+        }
+        if (polyLeft === Infinity) continue
 
-      // Obstacle overlaps this line vertically
-      if (oLeft <= left && oRight >= right) {
-        // Obstacle covers entire width — skip below
-        continue
-      }
-      if (oLeft <= left) {
-        left = Math.max(left, oRight)
-      } else if (oRight >= right) {
-        right = Math.min(right, oLeft)
-      } else {
-        // Obstacle in middle — take the wider side
-        const leftSpace = oLeft - left
-        const rightSpace = right - oRight
-        if (leftSpace >= rightSpace) {
-          right = oLeft
+        polyLeft -= m
+        polyRight += m
+
+        if (polyLeft <= left && polyRight >= right) continue
+        if (polyLeft <= left) {
+          left = Math.max(left, polyRight)
+        } else if (polyRight >= right) {
+          right = Math.min(right, polyLeft)
         } else {
-          left = oRight
+          const leftSpace = polyLeft - left
+          const rightSpace = right - polyRight
+          if (leftSpace >= rightSpace) right = polyLeft
+          else left = polyRight
+        }
+      } else {
+        const oTop = obs.y - m
+        const oBottom = obs.y + obs.height + m
+        if (lineY + this.lineHeight <= oTop || lineY >= oBottom) continue
+
+        const oLeft = obs.x - m
+        const oRight = obs.x + obs.width + m
+
+        if (oLeft <= left && oRight >= right) continue
+        if (oLeft <= left) {
+          left = Math.max(left, oRight)
+        } else if (oRight >= right) {
+          right = Math.min(right, oLeft)
+        } else {
+          const leftSpace = oLeft - left
+          const rightSpace = right - oRight
+          if (leftSpace >= rightSpace) right = oLeft
+          else left = oRight
         }
       }
     }
 
     const width = right - left
-    // If obstacle narrows the line too much, use full column width
-    // (the line will overlap the obstacle, but it's better than 3-word lines)
     if (width < colWidth * 0.4) return { x: colX, width: colWidth }
     return { x: left, width }
   }
@@ -815,8 +859,11 @@ export class PretextHighlighter {
         this.stage.appendChild(highlightDiv)
         this.highlightPool.push(highlightDiv)
 
-        // Animation
-        if (merged.animationTrigger === 'scrollIntoView') {
+        // Animation — skip for marks already shown (persists across resize)
+        const alreadyShown = this.shownMarks.has(seg.markIndex)
+        if (alreadyShown) {
+          this.startAnimation(si, true)
+        } else if (merged.animationTrigger === 'scrollIntoView') {
           this.observer?.observe(highlightDiv)
         } else {
           const delay = (merged.delay || 0) + (merged.multiLineDelay || 0) * si * merged.animationSpeed
@@ -832,6 +879,10 @@ export class PretextHighlighter {
   private startAnimation(segmentIndex: number, skip: boolean) {
     const renderer = this.renderers[segmentIndex]
     if (!renderer) return
+
+    // Track that this mark has been shown (survives resize)
+    const seg = this.highlightSegments[segmentIndex]
+    if (seg) this.shownMarks.add(seg.markIndex)
 
     renderer.startAnimation(skip)
 

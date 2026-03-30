@@ -12,7 +12,7 @@ export default class ScribbleRenderer extends Renderer {
     private padding: number;
     private lines: ScribbleLine[] = [];
     private lineWidth: number;
-    private lineCount: number = 3;
+    private lineCount: number = 2;
 
     constructor(options: RendererOptions) {
         super(options);
@@ -20,7 +20,7 @@ export default class ScribbleRenderer extends Renderer {
 
         const rect = this.rect.rect;
         this.padding = rect.height * 0.5;
-        this.lineWidth = rect.height * 0.1;
+        this.lineWidth = rect.height * 0.22;
 
         this.canvas = this.createCanvas(this.padding);
         this.ctx = this.canvas.getContext('2d')!;
@@ -32,27 +32,22 @@ export default class ScribbleRenderer extends Renderer {
 
     private generateLines(): void {
         const rect = this.rect.rect;
-        const lineSpacing = this.lineWidth * 1.5;
-        const maxAmplitude = rect.height * 0.3;
-
-        const lineStartColor = this.color.copy().lighten(10);
-        const lineEndColor = this.color;
+        const lineSpacing = this.lineWidth * 0.6;
+        const maxAmplitude = rect.height * 0.12;
 
         for (let line = 0; line < this.lineCount; line++) {
-            const baseY = (this.canvas.height / 2) + (line - 1) * lineSpacing;
+            const baseY = (this.canvas.height / 2) + (line - 0.5) * lineSpacing;
             const points: { x: number; y: number }[] = [];
+            const freq = 2 + line * 0.7;
+            const phase = line * 1.5;
 
             for (let i = 0; i <= this.TOTAL_POINTS; i++) {
                 const progress = i / this.TOTAL_POINTS;
                 const x = this.padding + progress * rect.width;
-                const deviation = (Math.sin(progress * Math.PI * 4 + line) * 0.5 + (Math.random() - 0.5) * 0.5) * maxAmplitude;
+                const deviation = Math.sin(progress * Math.PI * freq + phase) * maxAmplitude;
                 const y = baseY + deviation;
                 points.push({ x, y });
             }
-
-            // Interpolate color based on line position
-            const colorProgress = line / (this.lineCount - 1);
-            const color = colorProgress < 0.5 ? lineStartColor.copy() : lineEndColor.copy();
 
             this.lines.push({ points, color: this.color.rgb });
         }
