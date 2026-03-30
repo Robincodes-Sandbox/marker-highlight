@@ -64,16 +64,7 @@ const PAGE1_SHAPES: ShapeDef[] = [
   {
     id: 'big-star',
     svg: `<svg viewBox="0 0 260 260" xmlns="http://www.w3.org/2000/svg">
-      <polygon points="${(() => {
-        const pts: string[] = []
-        const cx = 130, cy = 130, outerR = 120, innerR = 50
-        for (let i = 0; i < 10; i++) {
-          const a = (i / 10) * 2 * Math.PI - Math.PI / 2
-          const r = i % 2 === 0 ? outerR : innerR
-          pts.push(`${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`)
-        }
-        return pts.join(' ')
-      })()}" fill="#1E88E520" stroke="#1E88E5" stroke-width="10" stroke-linejoin="round"/>
+      <polygon points="130,10 159.4,89.5 244.1,92.9 177.6,145.5 200.5,227.1 130,180 59.5,227.1 82.4,145.5 15.9,92.9 100.6,89.5" fill="#1E88E520" stroke="#1E88E5" stroke-width="10" stroke-linejoin="round"/>
     </svg>`,
     width: 260,
     height: 260,
@@ -176,10 +167,16 @@ const PAGE3_MARKS: PretextMark[] = [
     options: { animationSpeed: 650 },
   },
   {
-    phrase: 'utility and beauty was seamless',
+    phrase: 'genuinely new',
     color: '#E57373',
     drawingMode: 'circle',
     options: { animationSpeed: 1000, circle: { curve: 0.5, wobble: 0.3, loops: 2, thickness: 2 } },
+  },
+  {
+    phrase: 'The text snaps into place',
+    color: '#FDD835',
+    drawingMode: 'highlight',
+    options: { animationSpeed: 800, height: 1, highlight: { amplitude: 0.2, wavelength: 4, roughEnds: 1.5 } },
   },
 ]
 
