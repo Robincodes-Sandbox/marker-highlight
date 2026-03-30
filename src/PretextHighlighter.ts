@@ -34,6 +34,13 @@ export interface PretextObstacle {
   polygon?: { x: number; y: number }[]
 }
 
+/** Position in a shared paragraph stream, independent of font/preparation */
+export interface FlowPosition {
+  paragraphIndex: number
+  charOffset: number
+  completed: boolean
+}
+
 export interface PretextHighlighterOptions {
   font: string
   lineHeight: number
@@ -50,6 +57,14 @@ export interface PretextHighlighterOptions {
   obstacles?: PretextObstacle[]
   /** Callback when layout changes (with performance metrics) */
   onLayout?: (metrics: PretextMetrics) => void
+  /** Stop layout when columns reach this height (fill mode, no balancing) */
+  maxHeight?: number
+  /** Resume text flow from this position in the paragraph array */
+  startFrom?: FlowPosition
+  /** Explicit per-column widths in pixels. Length must equal columns. */
+  columnWidths?: number[]
+  /** Whether to attach a resize listener. Default true. Set false for chained pages. */
+  autoResize?: boolean
   // Standard highlight options (defaults for all marks)
   animate?: boolean
   animationSpeed?: number
@@ -175,6 +190,12 @@ export class PretextHighlighter {
   private resizeRafId: number | null = null
   private lastContainerWidth: number = 0
 
+  // Flow control
+  private maxHeight: number | null = null
+  private startFrom: FlowPosition | null = null
+  private columnWidthsOpt: number[] | null = null
+  private lastFlowStop: FlowPosition | null = null
+
   // Track marks whose animation has been shown (persists across resize)
   private shownMarks: Set<number> = new Set()
 
@@ -192,18 +213,18 @@ export class PretextHighlighter {
     this.onLayoutCallback = options.onLayout ?? null
     this.validator = new OptionsValidator()
 
+    // Flow control options
+    this.maxHeight = options.maxHeight ?? null
+    this.startFrom = options.startFrom ?? null
+    this.columnWidthsOpt = options.columnWidths ?? null
+
     // Validate highlight defaults (strip pretext-specific options)
     const highlightDefaults = { ...options }
-    delete highlightDefaults.font
-    delete highlightDefaults.lineHeight
-    delete highlightDefaults.containerPadding
-    delete highlightDefaults.paragraphs
-    delete highlightDefaults.marks
-    delete highlightDefaults.obstacles
-    delete highlightDefaults.onLayout
-    delete highlightDefaults.columns
-    delete highlightDefaults.columnGap
-    delete highlightDefaults.paragraphGap
+    for (const key of ['font', 'lineHeight', 'containerPadding', 'paragraphs', 'marks',
+      'obstacles', 'onLayout', 'columns', 'columnGap', 'paragraphGap',
+      'maxHeight', 'startFrom', 'columnWidths', 'autoResize']) {
+      delete highlightDefaults[key]
+    }
     this.options = this.validator.validate(highlightDefaults)
 
     // Ensure container is a positioned element so absolutely-positioned
@@ -250,8 +271,10 @@ export class PretextHighlighter {
     this.prepareText()
     this.relayout()
 
-    // Resize listener
-    window.addEventListener('resize', this.handleResize)
+    // Resize listener (disabled for chained pages where the demo manages resize)
+    if (options.autoResize !== false) {
+      window.addEventListener('resize', this.handleResize)
+    }
   }
 
   // --- Static style registry ---
@@ -283,6 +306,31 @@ export class PretextHighlighter {
   setObstacles(obstacles: PretextObstacle[]) {
     this.obstacles = obstacles
     this.relayout()
+  }
+
+  setStartFrom(position: FlowPosition | null) {
+    this.startFrom = position
+    this.relayout()
+  }
+
+  setColumnWidths(widths: number[] | null) {
+    this.columnWidthsOpt = widths
+  }
+
+  /** Batch-update multiple properties then relayout once */
+  update(opts: {
+    startFrom?: FlowPosition | null
+    obstacles?: PretextObstacle[]
+    columnWidths?: number[] | null
+  }) {
+    if (opts.startFrom !== undefined) this.startFrom = opts.startFrom
+    if (opts.obstacles !== undefined) this.obstacles = opts.obstacles
+    if (opts.columnWidths !== undefined) this.columnWidthsOpt = opts.columnWidths
+    this.relayout()
+  }
+
+  get flowStopPosition(): FlowPosition | null {
+    return this.lastFlowStop
   }
 
   refresh() {
@@ -326,16 +374,22 @@ export class PretextHighlighter {
     const t0 = performance.now()
 
     const containerWidth = this.container.clientWidth - 2 * this.containerPadding
-    const columnWidth = this.columns > 1
-      ? (containerWidth - (this.columns - 1) * this.columnGap) / this.columns
-      : containerWidth
 
-    // Two-pass layout for multi-column: first pass to estimate total height,
-    // second pass with the column height target.
-    if (this.columns > 1) {
-      this.lines = this.layoutColumns(columnWidth, containerWidth)
+    // Compute per-column widths
+    let colWidths: number[]
+    if (this.columnWidthsOpt && this.columnWidthsOpt.length === this.columns) {
+      colWidths = this.columnWidthsOpt
     } else {
-      this.lines = this.layoutSingleColumn(columnWidth)
+      const cw = this.columns > 1
+        ? (containerWidth - (this.columns - 1) * this.columnGap) / this.columns
+        : containerWidth
+      colWidths = new Array(this.columns).fill(cw)
+    }
+
+    if (this.columns > 1) {
+      this.lines = this.layoutColumns(colWidths, containerWidth)
+    } else {
+      this.lines = this.layoutSingleColumn(colWidths[0])
     }
 
     const layoutMs = performance.now() - t0
@@ -366,13 +420,34 @@ export class PretextHighlighter {
     const lines: PlacedLine[] = []
     let y = 0
 
-    for (let pi = 0; pi < this.prepared.length; pi++) {
+    const startPi = this.startFrom?.paragraphIndex ?? 0
+    let pageFull = false
+    let lastPi = startPi
+    let lastCharOffset = this.startFrom?.charOffset ?? 0
+
+    for (let pi = startPi; pi < this.prepared.length; pi++) {
       const prepared = this.prepared[pi]
       const paraText = this.paragraphTexts[pi]
-      let cursor: LayoutCursor = { segmentIndex: 0, graphemeIndex: 0 }
-      let charOffset = 0
+
+      let cursor: LayoutCursor
+      let charOffset: number
+      if (pi === startPi && this.startFrom && this.startFrom.charOffset > 0) {
+        cursor = this.charOffsetToCursor(prepared, paraText, this.startFrom.charOffset, columnWidth)
+        charOffset = this.startFrom.charOffset
+      } else {
+        cursor = { segmentIndex: 0, graphemeIndex: 0 }
+        charOffset = 0
+      }
 
       for (;;) {
+        // Check page full (but always allow at least one line)
+        if (this.maxHeight !== null && y + this.lineHeight > this.maxHeight && lines.length > 0) {
+          pageFull = true
+          lastPi = pi
+          lastCharOffset = charOffset
+          break
+        }
+
         const colX = this.containerPadding
         const slot = this.getLineSlot(colX, y, columnWidth)
         const line = layoutNextLine(prepared, cursor, slot.width)
@@ -391,19 +466,32 @@ export class PretextHighlighter {
         cursor = line.end
         y += this.lineHeight
       }
+
+      if (pageFull) break
+      lastPi = pi + 1
+      lastCharOffset = 0
       y += this.paragraphGap
     }
+
+    this.lastFlowStop = {
+      paragraphIndex: lastPi,
+      charOffset: lastCharOffset,
+      completed: !pageFull && lastPi >= this.prepared.length,
+    }
+
     return lines
   }
 
   // --- Multi-column layout ---
 
-  private layoutColumns(columnWidth: number, _containerWidth: number): PlacedLine[] {
-    // Find the target column height that produces the most balanced columns.
-    // Strategy: scan a range of targets around the ideal (totalHeight / columns)
-    // and pick the one with the smallest height difference between columns.
+  private layoutColumns(colWidths: number[], _containerWidth: number): PlacedLine[] {
+    // When maxHeight is set, fill columns to the brim (no balancing)
+    if (this.maxHeight !== null) {
+      return this.flowIntoColumns(colWidths, this.maxHeight)
+    }
 
-    const singlePass = this.layoutSingleColumnRaw(columnWidth)
+    // Balancing mode: scan targets to find the most balanced column heights
+    const singlePass = this.layoutSingleColumnRaw(colWidths[0])
     const totalHeight = singlePass.length > 0
       ? singlePass[singlePass.length - 1].y + this.lineHeight + this.paragraphGap
       : 0
@@ -413,15 +501,13 @@ export class PretextHighlighter {
     let bestLines: PlacedLine[] = []
     let bestDiff = Infinity
 
-    // Scan targets in half-lineHeight steps for finer granularity
     const step = Math.max(1, Math.round(this.lineHeight / 2))
     const scanStart = idealTarget - this.lineHeight * 6
     const scanEnd = idealTarget + this.lineHeight * 14
     for (let target = scanStart; target <= scanEnd; target += step) {
-      const result = this.flowIntoColumns(columnWidth, target)
+      const result = this.flowIntoColumns(colWidths, target)
       const colHeights = this.getColumnHeights(result)
 
-      // All columns must have content
       const filledCols = colHeights.filter(h => h > 0).length
       if (filledCols < this.columns) continue
 
@@ -434,29 +520,40 @@ export class PretextHighlighter {
         bestLines = result
       }
 
-      // Perfect — columns are equal
       if (diff === 0) break
     }
 
-    // Fallback: if no result filled all columns, use simple target
     if (bestLines.length === 0) {
-      bestLines = this.flowIntoColumns(columnWidth, idealTarget)
+      bestLines = this.flowIntoColumns(colWidths, idealTarget)
     }
 
     return bestLines
   }
 
-  /** Flow all text into columns with the given target column height */
-  private flowIntoColumns(columnWidth: number, targetColHeight: number): PlacedLine[] {
+  /** Flow text into columns with the given target column height */
+  private flowIntoColumns(colWidths: number[], targetColHeight: number): PlacedLine[] {
     const lines: PlacedLine[] = []
     let currentCol = 0
     let y = 0
 
-    for (let pi = 0; pi < this.prepared.length; pi++) {
+    const startPi = this.startFrom?.paragraphIndex ?? 0
+    let pageFull = false
+    let lastPi = startPi
+    let lastCharOffset = this.startFrom?.charOffset ?? 0
+
+    for (let pi = startPi; pi < this.prepared.length; pi++) {
       const prepared = this.prepared[pi]
       const paraText = this.paragraphTexts[pi]
-      let cursor: LayoutCursor = { segmentIndex: 0, graphemeIndex: 0 }
-      let charOffset = 0
+
+      let cursor: LayoutCursor
+      let charOffset: number
+      if (pi === startPi && this.startFrom && this.startFrom.charOffset > 0) {
+        cursor = this.charOffsetToCursor(prepared, paraText, this.startFrom.charOffset, colWidths[currentCol])
+        charOffset = this.startFrom.charOffset
+      } else {
+        cursor = { segmentIndex: 0, graphemeIndex: 0 }
+        charOffset = 0
+      }
 
       for (;;) {
         // Column overflow
@@ -465,8 +562,16 @@ export class PretextHighlighter {
           y = 0
         }
 
-        const colX = this.containerPadding + currentCol * (columnWidth + this.columnGap)
-        const slot = this.getLineSlot(colX, y, columnWidth)
+        // Page full: all columns reached target and maxHeight is set
+        if (this.maxHeight !== null && y + this.lineHeight > targetColHeight && currentCol >= this.columns - 1 && lines.length > 0) {
+          pageFull = true
+          lastPi = pi
+          lastCharOffset = charOffset
+          break
+        }
+
+        const colX = this.getColumnX(currentCol, colWidths)
+        const slot = this.getLineSlot(colX, y, colWidths[currentCol])
         const line = layoutNextLine(prepared, cursor, slot.width)
         if (line === null) break
 
@@ -483,8 +588,22 @@ export class PretextHighlighter {
         cursor = line.end
         y += this.lineHeight
       }
+
+      if (pageFull) break
+      lastPi = pi + 1
+      lastCharOffset = 0
       y += this.paragraphGap
     }
+
+    // Report flow position (only when maxHeight is in play — fill mode)
+    if (this.maxHeight !== null) {
+      this.lastFlowStop = {
+        paragraphIndex: lastPi,
+        charOffset: lastCharOffset,
+        completed: !pageFull && lastPi >= this.prepared.length,
+      }
+    }
+
     return lines
   }
 
@@ -498,15 +617,25 @@ export class PretextHighlighter {
     return heights
   }
 
-  /** Raw single-column layout without obstacles (for height estimation) */
+  /** Raw single-column layout without obstacles (for height estimation in balancing mode) */
   private layoutSingleColumnRaw(columnWidth: number): PlacedLine[] {
     const lines: PlacedLine[] = []
     let y = 0
-    for (let pi = 0; pi < this.prepared.length; pi++) {
+    const startPi = this.startFrom?.paragraphIndex ?? 0
+    for (let pi = startPi; pi < this.prepared.length; pi++) {
       const prepared = this.prepared[pi]
       const paraText = this.paragraphTexts[pi]
-      let cursor: LayoutCursor = { segmentIndex: 0, graphemeIndex: 0 }
-      let charOffset = 0
+
+      let cursor: LayoutCursor
+      let charOffset: number
+      if (pi === startPi && this.startFrom && this.startFrom.charOffset > 0) {
+        cursor = this.charOffsetToCursor(prepared, paraText, this.startFrom.charOffset, columnWidth)
+        charOffset = this.startFrom.charOffset
+      } else {
+        cursor = { segmentIndex: 0, graphemeIndex: 0 }
+        charOffset = 0
+      }
+
       for (;;) {
         const line = layoutNextLine(prepared, cursor, columnWidth)
         if (line === null) break
@@ -607,6 +736,37 @@ export class PretextHighlighter {
     const width = right - left
     if (width < colWidth * 0.4) return { x: colX, width: colWidth }
     return { x: left, width }
+  }
+
+  // --- Flow helpers ---
+
+  /** Compute X position for a given column index with variable column widths */
+  private getColumnX(colIndex: number, colWidths: number[]): number {
+    let x = this.containerPadding
+    for (let i = 0; i < colIndex; i++) {
+      x += colWidths[i] + this.columnGap
+    }
+    return x
+  }
+
+  /** Walk layoutNextLine from paragraph start, counting characters, until we
+   *  reach the target charOffset. Returns the LayoutCursor to resume from. */
+  private charOffsetToCursor(
+    prepared: PreparedTextWithSegments,
+    paraText: string,
+    targetCharOffset: number,
+    columnWidth: number,
+  ): LayoutCursor {
+    let charOffset = 0
+    let cursor: LayoutCursor = { segmentIndex: 0, graphemeIndex: 0 }
+    while (charOffset < targetCharOffset) {
+      const line = layoutNextLine(prepared, cursor, columnWidth)
+      if (line === null) break
+      charOffset += line.text.length
+      while (charOffset < paraText.length && /\s/.test(paraText[charOffset])) charOffset++
+      cursor = line.end
+    }
+    return cursor
   }
 
   // --- Map marks to line positions ---
@@ -787,13 +947,15 @@ export class PretextHighlighter {
       el.textContent = line.text
     }
 
-    // Set container height to fit all content (use max Y across all columns)
-    let maxY = 0
-    for (const line of this.lines) {
-      if (line.y > maxY) maxY = line.y
-    }
-    if (maxY > 0) {
-      this.stage.style.height = `${maxY + this.lineHeight + 40}px`
+    // Set container height to fit content (unless maxHeight constrains it)
+    if (this.maxHeight === null) {
+      let maxY = 0
+      for (const line of this.lines) {
+        if (line.y > maxY) maxY = line.y
+      }
+      if (maxY > 0) {
+        this.stage.style.height = `${maxY + this.lineHeight + 40}px`
+      }
     }
 
     // Remove old highlights
