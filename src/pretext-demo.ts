@@ -41,7 +41,7 @@ const MARKS: PretextMark[] = [
     color: '#FDD835',
     drawingMode: 'highlight',
     options: {
-      animationSpeed: 2200,
+      animationSpeed: 1000,
       height: 1,
       highlight: { amplitude: 0.2, wavelength: 5, roughEnds: 2 },
     },
@@ -51,7 +51,7 @@ const MARKS: PretextMark[] = [
     color: '#FFE082',
     drawingMode: 'highlight',
     options: {
-      animationSpeed: 2000,
+      animationSpeed: 900,
       height: 1,
       highlight: { amplitude: 0.15, wavelength: 3, roughEnds: 1 },
     },
@@ -60,13 +60,13 @@ const MARKS: PretextMark[] = [
     phrase: 'The luminous yellow became instantly iconic',
     color: '#FFF176',
     drawingMode: 'highlight',
-    options: { animationSpeed: 1400, height: 1, highlight: { amplitude: 0.25, wavelength: 4, roughEnds: 1.5 } },
+    options: { animationSpeed: 650, height: 1, highlight: { amplitude: 0.25, wavelength: 4, roughEnds: 1.5 } },
   },
   {
     phrase: 'digital highlighting has inherited these ancient traditions while gaining capabilities that would have seemed magical',
     color: '#FFD54F',
     drawingMode: 'highlight',
-    options: { animationSpeed: 2400, height: 1, highlight: { amplitude: 0.18, wavelength: 6, roughEnds: 2 } },
+    options: { animationSpeed: 1100, height: 1, highlight: { amplitude: 0.18, wavelength: 6, roughEnds: 2 } },
   },
 
   // CIRCLE style (red hand-drawn circles)
@@ -75,7 +75,7 @@ const MARKS: PretextMark[] = [
     color: '#EF5350',
     drawingMode: 'circle',
     options: {
-      animationSpeed: 1800,
+      animationSpeed: 800,
       circle: { curve: 0.6, wobble: 0.35, loops: 3, thickness: 2.5 },
     },
   },
@@ -84,7 +84,7 @@ const MARKS: PretextMark[] = [
     color: '#E57373',
     drawingMode: 'circle',
     options: {
-      animationSpeed: 2200,
+      animationSpeed: 1000,
       circle: { curve: 0.5, wobble: 0.3, loops: 2, thickness: 2 },
     },
   },
@@ -93,7 +93,7 @@ const MARKS: PretextMark[] = [
     color: '#EF5350',
     drawingMode: 'circle',
     options: {
-      animationSpeed: 1600,
+      animationSpeed: 750,
       circle: { curve: 0.7, wobble: 0.4, loops: 3, thickness: 2.5 },
     },
   },
@@ -103,13 +103,13 @@ const MARKS: PretextMark[] = [
     phrase: 'this matters, remember this',
     color: '#66BB6A',
     drawingMode: 'scribble',
-    options: { animationSpeed: 1500 },
+    options: { animationSpeed: 700 },
   },
   {
     phrase: 'pure arithmetic',
     color: '#81C784',
     drawingMode: 'scribble',
-    options: { animationSpeed: 1200 },
+    options: { animationSpeed: 550 },
   },
 
   // SKETCHOUT style (blue sketchy rectangles)
@@ -117,19 +117,19 @@ const MARKS: PretextMark[] = [
     phrase: 'cached font metrics',
     color: '#42A5F5',
     drawingMode: 'sketchout',
-    options: { animationSpeed: 1600 },
+    options: { animationSpeed: 750 },
   },
   {
     phrase: 'runs in microseconds',
     color: '#64B5F6',
     drawingMode: 'sketchout',
-    options: { animationSpeed: 1400 },
+    options: { animationSpeed: 650 },
   },
   {
     phrase: 'constraints that once shaped digital typography begin to dissolve',
     color: '#42A5F5',
     drawingMode: 'sketchout',
-    options: { animationSpeed: 2000 },
+    options: { animationSpeed: 900 },
   },
 ]
 
@@ -335,7 +335,8 @@ function initTraditionalSection() {
     marks: MARKS,
     obstacles,
     animate: true,
-    animationSpeed: 1800,
+    animationSpeed: 800,
+    multiLineDelay: 150,
     animationTrigger: 'scrollIntoView',
     padding: 0.12,
     height: 1,

@@ -201,9 +201,9 @@ const validationRules = [
         property: 'multiLineDelay',
         type: 'number',
         min: 0,
-        max: 1,
+        max: 5000,
         default: 0,
-        description: 'Controls the delay between multiline highlights. 0 means all lines start at once, 1 means each line waits for the previous to finish'
+        description: 'Stagger delay between lines of a multi-line highlight, in milliseconds'
     },
     {
         property: 'delay',

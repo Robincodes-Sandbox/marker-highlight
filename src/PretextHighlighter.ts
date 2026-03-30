@@ -231,8 +231,14 @@ export class PretextHighlighter {
         entries => {
           for (const entry of entries) {
             if (!entry.isIntersecting) continue
-            const idx = parseInt((entry.target as HTMLElement).dataset.segIdx || '0')
-            this.startAnimation(idx, false)
+            const el = entry.target as HTMLElement
+            const idx = parseInt(el.dataset.segIdx || '0')
+            const stagger = parseInt(el.dataset.stagger || '0')
+            if (stagger > 0) {
+              setTimeout(() => this.startAnimation(idx, false), stagger)
+            } else {
+              this.startAnimation(idx, false)
+            }
             this.observer?.unobserve(entry.target)
           }
         },
@@ -796,9 +802,18 @@ export class PretextHighlighter {
     this.renderers = []
     this.animationFrameIds = []
 
-    // Create highlights
+    // Create highlights — track per-mark segment offset for stagger
+    let prevMarkIndex = -1
+    let markSegOffset = 0
+
     for (let si = 0; si < this.highlightSegments.length; si++) {
       const seg = this.highlightSegments[si]
+      if (seg.markIndex !== prevMarkIndex) {
+        prevMarkIndex = seg.markIndex
+        markSegOffset = 0
+      } else {
+        markSegOffset++
+      }
       const mark = this.markDefs[seg.markIndex]
 
       // Merge options: defaults → style → per-mark
@@ -861,13 +876,16 @@ export class PretextHighlighter {
 
         // Animation — skip for marks already shown (persists across resize)
         const alreadyShown = this.shownMarks.has(seg.markIndex)
+        const staggerMs = markSegOffset * (merged.multiLineDelay || 0)
+        highlightDiv.dataset.stagger = String(staggerMs)
+
         if (alreadyShown) {
           this.startAnimation(si, true)
         } else if (merged.animationTrigger === 'scrollIntoView') {
           this.observer?.observe(highlightDiv)
         } else {
-          const delay = (merged.delay || 0) + (merged.multiLineDelay || 0) * si * merged.animationSpeed
-          setTimeout(() => this.startAnimation(si, skipAnimation), delay)
+          const baseDelay = merged.delay || 0
+          setTimeout(() => this.startAnimation(si, skipAnimation), baseDelay + staggerMs)
         }
 
       } catch (e) {
