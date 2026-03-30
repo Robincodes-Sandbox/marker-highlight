@@ -23,7 +23,7 @@
         }
 
         body {
-            background: var(--page-bg);
+            background: #E8E6E1;
             color: var(--text);
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             -webkit-font-smoothing: antialiased;
@@ -79,20 +79,30 @@
             font-weight: 600;
         }
 
-        /* --- Pretext section --- */
-        .section-label {
-            padding: 20px 48px 8px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-muted);
+        /* --- Page containers --- */
+        .pages-wrapper {
+            padding: 32px 48px 48px;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
         }
 
-        #pretext-container {
+        .pretext-page {
             position: relative;
-            margin: 0 48px 48px;
+            height: 50vh;
             min-height: 400px;
+            background: var(--page-bg);
+            border: 2px solid var(--border);
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+            overflow: hidden;
+            padding: 36px;
+        }
+
+        .pretext-page .page-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
         }
 
         .pretext-line {
@@ -105,7 +115,7 @@
 
         /* --- Style legend --- */
         .legend {
-            margin: 0 48px 24px;
+            margin: 0 48px 0;
             display: flex;
             gap: 28px;
             flex-wrap: wrap;
@@ -127,7 +137,7 @@
 
         /* --- Traditional section --- */
         .traditional-wrapper {
-            margin: 48px 48px 80px;
+            margin: 0 48px 48px;
             padding-top: 32px;
             border-top: 1px solid var(--border);
         }
@@ -186,26 +196,23 @@
 
         /* --- Responsive --- */
         @media (max-width: 900px) {
-            .page-header, .metrics-bar, .section-label,
-            .legend, .traditional-wrapper, .page-footer {
+            .page-header, .metrics-bar,
+            .legend, .traditional-wrapper, .page-footer,
+            .pages-wrapper {
                 padding-left: 24px;
                 padding-right: 24px;
-            }
-            #pretext-container, .traditional-wrapper {
-                margin-left: 24px;
-                margin-right: 24px;
             }
         }
 
         @media (max-width: 600px) {
-            .page-header, .metrics-bar, .section-label,
-            .legend, .traditional-wrapper, .page-footer {
+            .page-header, .metrics-bar,
+            .legend, .traditional-wrapper, .page-footer,
+            .pages-wrapper {
                 padding-left: 16px;
                 padding-right: 16px;
             }
-            #pretext-container, .traditional-wrapper {
-                margin-left: 16px;
-                margin-right: 16px;
+            .pretext-page {
+                padding: 20px;
             }
         }
     </style>
@@ -219,7 +226,7 @@
         <p class="header-subtitle">
             Arithmetic text layout via
             <a href="https://github.com/chenglou/pretext" style="color: #FF8A80; text-decoration: none;">pretext</a>
-            — zero DOM reflow on resize. Four highlight styles flowing across three columns with SVG obstacles.
+            — zero DOM reflow on resize. Text flows across pages, columns, and around obstacles.
         </p>
     </header>
 
@@ -227,28 +234,20 @@
         <span>Loading…</span>
     </div>
 
-    <div class="section-label">Pretext-powered layout — 3 columns, 4 highlight styles</div>
-
-    <div class="legend">
-        <div class="legend-item">
-            <div class="legend-swatch" style="background: #FDD835;"></div>
-            <span>Highlight (marker pen)</span>
+    <div class="pages-wrapper">
+        <div class="pretext-page" id="page-1">
+            <div class="page-inner" id="page-1-inner"></div>
         </div>
-        <div class="legend-item">
-            <div class="legend-swatch" style="background: #EF5350; border-radius: 50%;"></div>
-            <span>Circle (hand-drawn)</span>
+        <div class="pretext-page" id="page-2">
+            <div class="page-inner" id="page-2-inner"></div>
         </div>
-        <div class="legend-item">
-            <div class="legend-swatch" style="background: #66BB6A; height: 6px; border-radius: 0;"></div>
-            <span>Scribble</span>
+        <div class="pretext-page" id="page-3">
+            <div class="page-inner" id="page-3-inner"></div>
         </div>
-        <div class="legend-item">
-            <div class="legend-swatch" style="background: transparent; border: 2px solid #42A5F5; height: 10px;"></div>
-            <span>Sketchout (rectangle)</span>
+        <div class="pretext-page" id="page-4">
+            <div class="page-inner" id="page-4-inner"></div>
         </div>
     </div>
-
-    <div id="pretext-container"></div>
 
     <!-- Traditional DOM-based section for comparison -->
     <div class="traditional-wrapper">
