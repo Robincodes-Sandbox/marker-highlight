@@ -94,6 +94,14 @@ const ALL_PARAGRAPHS = [
   `The performance implications of this approach are striking. Where traditional DOM-based highlighting requires expensive layout reflows — each call to getClientRects() forces the browser to recalculate the position of every element — pretext's arithmetic layout runs in microseconds. A resize that might take fifty milliseconds with DOM measurement completes in under a tenth of a millisecond. The text snaps into place. The highlights follow instantly.`,
 
   `This speed opens new possibilities. Text can reflow continuously during window resizing, not in jerky debounced steps. Highlights can track dynamically changing content without visible lag. Multiple columns of flowing text — something that pushes CSS to its limits — become trivial when layout is just arithmetic on cached measurements. The constraints that once shaped digital typography begin to dissolve.`,
+
+  `Consider the complexity hidden behind a simple paragraph of flowing text. Each word must be measured, each potential break point evaluated, each line balanced against the available width. When obstacles intrude — an image, a pull quote, a decorative element — the calculations multiply. Traditional browsers perform these calculations through a cascade of layout passes, each one potentially triggering repaints across the entire document tree.`,
+
+  `The arithmetic approach sidesteps this entirely. By pre-measuring every segment of text and caching the results, layout becomes a simple matter of addition and comparison. A line fits or it doesn't. A column is full or it isn't. The elegance lies not in the sophistication of the algorithm but in its directness — there is no speculation, no approximation, no recursive dependency resolution. Just numbers, added together, compared against a limit.`,
+
+  `What makes this particularly powerful is the composability it enables. A page can be divided into regions of arbitrary shape and proportion. Text flows through them in sequence, adapting to each region's constraints without any awareness of the others. The layout engine doesn't need to understand pages or columns or margins — it only needs to know the width available for the next line. Everything else is just arithmetic context passed from one region to the next.`,
+
+  `This is perhaps the most profound insight of the pretext approach: that typography, for all its centuries of accumulated craft and tradition, reduces at its core to a sequence of width calculations. The beauty of a well-set page emerges not from complexity but from precision — each line broken at exactly the right point, each column filled to exactly the right depth, each highlight placed with pixel-perfect accuracy over the words it was meant to emphasize.`,
 ]
 
 // --- All marks (passed to every page — only render where phrase appears) ---
@@ -179,6 +187,28 @@ const ALL_MARKS: PretextMark[] = [
     phrase: 'constraints that once shaped digital typography begin to dissolve',
     color: '#42A5F5', drawingMode: 'sketchout',
     options: { animationSpeed: 900 },
+  },
+
+  // Marks in extended paragraphs
+  {
+    phrase: 'no speculation, no approximation, no recursive dependency resolution',
+    color: '#FDD835', drawingMode: 'highlight',
+    options: { animationSpeed: 1000, height: 1, highlight: { amplitude: 0.2, wavelength: 5, roughEnds: 2 } },
+  },
+  {
+    phrase: 'composability it enables',
+    color: '#EF5350', drawingMode: 'circle',
+    options: { animationSpeed: 800, circle: { curve: 0.6, wobble: 0.35, loops: 3, thickness: 2.5 } },
+  },
+  {
+    phrase: 'typography, for all its centuries of accumulated craft and tradition, reduces at its core to a sequence of width calculations',
+    color: '#FFD54F', drawingMode: 'highlight',
+    options: { animationSpeed: 1200, height: 1, highlight: { amplitude: 0.18, wavelength: 6, roughEnds: 2 } },
+  },
+  {
+    phrase: 'pixel-perfect accuracy',
+    color: '#64B5F6', drawingMode: 'sketchout',
+    options: { animationSpeed: 700 },
   },
 ]
 
