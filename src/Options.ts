@@ -147,6 +147,23 @@ const validationRules = [
         ],
         default: { style: 'lines', power: 1, count: 10, randomness: 0.5 }
     },
+
+    // renderer specific settings for the dashed underline
+    {
+        property: 'dashed',
+        type: 'object',
+        scalarField: 'dashLength',
+        expectedProperties: [
+            { name: 'dashLength', type: 'number', min: 0.05, max: 5, default: 0.5, description: 'Length of each dash, in units of text height. 0.5 ≈ half the cap height.' },
+            { name: 'gapLength', type: 'number', min: 0.05, max: 5, default: 0.38, description: 'Length of the gap between dashes, in units of text height.' },
+            { name: 'strokeJitter', type: 'number', min: 0, max: 1, default: 0.05, description: 'Random variation in dash length. 0.05 = ±5%. Gives the hand-drawn irregularity.' },
+            { name: 'gapJitter', type: 'number', min: 0, max: 1, default: 0.1, description: 'Random variation in gap length. 0.1 = ±10%.' },
+            { name: 'thickness', type: 'number', min: 0.5, max: 12, default: 1.5, description: 'Stroke weight of the dashes, in px.' },
+            { name: 'wobble', type: 'number', min: 0, max: 3, default: 0.6, description: 'Amplitude of the shared undulating line the dashes ride. 0 = dead straight.' },
+            { name: 'undulations', type: 'number', min: 0, max: 20, default: 3.5, description: 'How many gentle waves the dashes follow across the width. The dashes ride one smooth line rather than each tilting on its own.' }
+        ],
+        default: { dashLength: 0.5, gapLength: 0.38, strokeJitter: 0.05, gapJitter: 0.1, thickness: 1.5, wobble: 0.6, undulations: 3.5 }
+    },
     {
         property: 'wavelength',
         type: 'number',
@@ -171,9 +188,9 @@ const validationRules = [
     {
         property: 'drawingMode',
         type: 'enum',
-        validValues: ['highlight', 'circle', 'burst', 'scribble', 'sketchout'],
+        validValues: ['highlight', 'circle', 'burst', 'scribble', 'sketchout', 'dashed'],
         default: 'highlight',
-        description: 'The drawing mode to use for the highlight. Options: highlight (wavy marker), circle (hand-drawn circle), burst (radiating lines), scribble (messy scribble), sketchout (sketchy rectangle outline)'
+        description: 'The drawing mode to use for the highlight. Options: highlight (wavy marker), circle (hand-drawn circle), burst (radiating lines), scribble (messy scribble), sketchout (sketchy rectangle outline), dashed (hand-drawn dashed underline)'
     },
     {
         property: 'debug',

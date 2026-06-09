@@ -3,6 +3,7 @@ import ScribbleRenderer from './ScribbleRenderer';
 import SketchoutRenderer from './SketchoutRenderer';
 import CircleRenderer from './CircleRenderer';
 import BurstRenderer from './BurstRenderer';
+import DashedRenderer from './DashedRenderer';
 
 // Import other Renderers as needed
 
@@ -26,6 +27,8 @@ class RendererFactory {
                 return new SketchoutRenderer({ options, color, rect });
             case 'circle':
                 return new CircleRenderer({ options, color, rect });
+            case 'dashed':
+                return new DashedRenderer({ options, color, rect });
             default:
                 throw new Error(`Unsupported drawing mode: ${mode}`);
         }

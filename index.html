@@ -805,6 +805,28 @@
             </div>
 
             <div class="mode-card">
+                <span class="label">Dashed</span>
+                <h3>Hand-drawn dashed underline</h3>
+                <p>Underline text with a <mark class="mark-red" data-original-bgcolor="#1a1c24" data-drawing-mode="dashed" data-animation-speed="900" data-offset="0.4" data-dashed='{"dashLength": 0.4, "gapLength": 0.3, "thickness": 2.5}'>hand-drawn dashed line</mark> that rides one gentle wave. Fixed dash size, even gaps, clean ends.</p>
+                <div class="btn-group">
+                    <button class="replay-btn">Replay</button>
+                    <button class="code-toggle">Show Code</button>
+                </div>
+                <div class="code-sample">
+                    <h5>HTML</h5>
+                    <pre class="html-code">&lt;<span class="tag">mark</span> <span class="attr">data-drawing-mode</span>=<span class="string">"dashed"</span>
+     <span class="attr">data-offset</span>=<span class="string">"0.4"</span>
+     <span class="attr">data-dashed</span>=<span class="string">'{"dashLength":0.4,"gapLength":0.3,"thickness":2.5}'</span>&gt;dashed line&lt;/<span class="tag">mark</span>&gt;</pre>
+                    <h5>JavaScript</h5>
+                    <pre class="js-code"><span class="keyword">new</span> MarkerHighlighter(container, {
+    drawingMode: <span class="string">'dashed'</span>,
+    offset: <span class="string">0.4</span>,
+    dashed: { dashLength: <span class="string">0.4</span>, gapLength: <span class="string">0.3</span>, thickness: <span class="string">2.5</span> }
+});</pre>
+                </div>
+            </div>
+
+            <div class="mode-card">
                 <span class="label">Combined</span>
                 <h3>Mix and Match</h3>
                 <p>Use <mark class="mark-blue" data-highlight-style="underline">underline style</mark> with <mark class="mark-yellow" data-highlight-style="bold">bold highlights</mark> on the same page.</p>
